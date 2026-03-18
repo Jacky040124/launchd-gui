@@ -18,7 +18,7 @@ use launchpad::adapter::star_store::JsonStarStore;
 use launchpad::config::AppConfig;
 use launchpad::domain::action::TriggerAction;
 use launchpad::domain::filter::AdvancedFilter;
-use launchpad::domain::job::{JobScope, JobSummary};
+use launchpad::domain::job::{compute_capabilities, JobScope, JobSummary};
 use launchpad::domain::job_detail::JobRuntimeDetails;
 use launchpad::domain::plist_document::{search_key_defs, LaunchdKeyDef, StandardPlistDocument};
 use launchpad::domain::status::JobStatus;
@@ -412,6 +412,8 @@ impl AppController {
             "load starred" => self.trigger_starred_batch(ui, TriggerAction::Load),
             "unload starred" => self.trigger_starred_batch(ui, TriggerAction::Unload),
             "save" => self.save_editor(ui),
+            "save load" => self.save_editor_and_load(ui),
+            "save load enable" => self.save_editor_load_enable(ui),
             "logs" => self.load_recent_logs(ui),
             "star" | "unstar" => self.toggle_star(ui),
             "new user" | "new user job" => self.start_new_job_editor(ui, JobScope::UserAgent),
@@ -1007,6 +1009,23 @@ impl AppController {
     }
 
     fn save_editor(&mut self, ui: &MainWindow) {
+        self.save_editor_with_post_actions(ui, false, false);
+    }
+
+    fn save_editor_and_load(&mut self, ui: &MainWindow) {
+        self.save_editor_with_post_actions(ui, true, false);
+    }
+
+    fn save_editor_load_enable(&mut self, ui: &MainWindow) {
+        self.save_editor_with_post_actions(ui, true, true);
+    }
+
+    fn save_editor_with_post_actions(
+        &mut self,
+        ui: &MainWindow,
+        should_load: bool,
+        should_enable: bool,
+    ) {
         let document = match self.editor_document_from_state() {
             Ok(document) => document,
             Err(err) => {
@@ -1020,6 +1039,7 @@ impl AppController {
             return;
         };
 
+        let mut post_action_job: Option<JobSummary> = None;
         match target {
             EditorTarget::Existing { index } => {
                 if index >= self.jobs.len() {
@@ -1032,22 +1052,72 @@ impl AppController {
                     .save_existing(&job.path, &job.scope, &document)
                 {
                     Ok(_) => {
-                        ui.set_status_message("Saved plist changes.".into());
-                        self.refresh(ui);
+                        post_action_job = Some(JobSummary {
+                            id: job.id.clone(),
+                            label: document.label.clone(),
+                            path: job.path.clone(),
+                            scope: job.scope.clone(),
+                            status: job.status,
+                            is_starred: job.is_starred,
+                            metadata: job.metadata.clone(),
+                            capabilities: compute_capabilities(&job.scope, &job.path),
+                            error: None,
+                        });
                     }
                     Err(err) => ui.set_status_message(format!("Save failed: {err}").into()),
                 }
             }
-            EditorTarget::New { scope } => match self.plist_service.create_new(scope, &document) {
-                Ok(path) => {
-                    ui.set_status_message(
-                        format!("Created new plist at {}", path.display()).into(),
-                    );
-                    self.refresh(ui);
+            EditorTarget::New { scope } => {
+                let create_scope = scope.clone();
+                match self.plist_service.create_new(create_scope, &document) {
+                    Ok(path) => {
+                        post_action_job = Some(JobSummary {
+                            id: path.to_string_lossy().to_string(),
+                            label: document.label.clone(),
+                            path: path.clone(),
+                            scope: scope.clone(),
+                            status: JobStatus::Unknown,
+                            is_starred: false,
+                            metadata: launchpad::domain::job::JobMetadata::default(),
+                            capabilities: compute_capabilities(&scope, &path),
+                            error: None,
+                        });
+                    }
+                    Err(err) => ui.set_status_message(format!("Create failed: {err}").into()),
                 }
-                Err(err) => ui.set_status_message(format!("Create failed: {err}").into()),
-            },
+            }
         }
+
+        let mut load_result = None;
+        let mut enable_result = None;
+        if let Some(job) = post_action_job.as_ref() {
+            if should_load {
+                load_result = Some(self.action_service.execute(job, TriggerAction::Load));
+            }
+            if should_enable {
+                enable_result = Some(self.action_service.execute(job, TriggerAction::Enable));
+            }
+        } else {
+            return;
+        }
+
+        self.refresh(ui);
+        let mut status_line = "Saved plist changes.".to_string();
+        if should_load {
+            status_line = match load_result {
+                Some(Ok(())) => format!("{status_line} Load: success."),
+                Some(Err(err)) => format!("{status_line} Load failed: {err}."),
+                None => format!("{status_line} Load skipped."),
+            };
+        }
+        if should_enable {
+            status_line = match enable_result {
+                Some(Ok(())) => format!("{status_line} Enable: success."),
+                Some(Err(err)) => format!("{status_line} Enable failed: {err}."),
+                None => format!("{status_line} Enable skipped."),
+            };
+        }
+        ui.set_status_message(status_line.into());
     }
 
     fn set_starred_only(&mut self, ui: &MainWindow, value: bool) {
@@ -2028,6 +2098,26 @@ pub fn run() -> Result<(), slint::PlatformError> {
         ui.on_save_editor_requested(move || {
             if let Some(ui) = ui_weak.upgrade() {
                 controller.borrow_mut().save_editor(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_save_editor_and_load_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().save_editor_and_load(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_save_editor_load_enable_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().save_editor_load_enable(&ui);
             }
         });
     }

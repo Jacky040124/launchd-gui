@@ -153,13 +153,16 @@ Expected:
    - RunAtLoad / KeepAlive toggles
 3. Confirm XML preview updates immediately as fields change.
 4. Click **Save** and verify status message indicates success.
-5. Click **New User Job** (or **New Global Job**), adjust fields, then **Save**.
-6. Click **Refresh** and verify the newly created plist appears in list.
+5. Click **Save+Load** and verify load result is shown.
+6. Click **Save+Load+Enable** and verify load/enable results are shown.
+7. Click **New User Job** (or **New Global Job**), adjust fields, then **Save**.
+8. Click **Refresh** and verify the newly created plist appears in list.
 
 Expected:
 - Editor shows validation errors for invalid values (for example malformed env pairs).
 - Existing plist edits can be saved safely.
 - New plist creation succeeds in allowed directories and is visible after refresh.
+- Save+Load / Save+Load+Enable returns explicit post-action status.
 
 ## J2. Key Panel (search + add)
 

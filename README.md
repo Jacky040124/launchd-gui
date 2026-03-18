@@ -41,6 +41,7 @@ LaunchPad currently includes these core capabilities:
    - real-time XML preview while editing
    - real-time diagnostics with issue descriptions and fix suggestions
    - create new user/global plist from the app
+   - optional post-save actions: `Save+Load`, `Save+Load+Enable`
    - expert key entries (`KEY=VALUE`) for advanced/undocumented string keys
    - searchable key panel (36+ documented launchd keys, click to inject templates)
 9. **Built-in log viewer (selected job)**:
@@ -53,7 +54,7 @@ LaunchPad currently includes these core capabilities:
    - patch diff preview + explicit confirm before applying edits to editor
    - provider HTTP calls for OpenAI-compatible, Anthropic, and Google (configurable endpoint/model)
 11. **Command palette (Raycast-style interaction)**:
-   - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `logs`)
+   - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `save load`, `save load enable`, `logs`)
    - batch starred controls (`start starred`, `stop starred`, `enable starred`, etc.)
    - AI provider commands (`providers`, `provider <name>`)
 

@@ -89,6 +89,8 @@ export component MainWindow inherits Window {
     callback toggle_editor_run_at_load();
     callback toggle_editor_keep_alive();
     callback save_editor_requested();
+    callback save_editor_and_load_requested();
+    callback save_editor_load_enable_requested();
     callback new_job_requested(string);
     callback refresh_logs_requested();
     callback ai_prompt_changed(string);
@@ -496,6 +498,16 @@ export component MainWindow inherits Window {
                         text: "Save";
                         enabled: !root.busy;
                         clicked => { root.save_editor_requested(); }
+                    }
+                    Button {
+                        text: "Save+Load";
+                        enabled: !root.busy;
+                        clicked => { root.save_editor_and_load_requested(); }
+                    }
+                    Button {
+                        text: "Save+Load+Enable";
+                        enabled: !root.busy;
+                        clicked => { root.save_editor_load_enable_requested(); }
                     }
                 }
 
