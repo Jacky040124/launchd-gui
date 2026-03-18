@@ -257,6 +257,8 @@ Expected:
 5. Queue one action and trigger app refresh:
    ```bash
    /path/to/quicklaunch_helper --enqueue-action start <job-id-from-list>
+   /path/to/quicklaunch_helper --enqueue-group-action user-agent stop
+   /path/to/quicklaunch_helper --enqueue-starred-action disable
    /path/to/quicklaunch_helper --drain-actions
    ```
    > `--drain-actions` should now show queued JSON; run LaunchPad **Refresh** once, then run again and it should return `[]`.

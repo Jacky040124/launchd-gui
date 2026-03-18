@@ -49,13 +49,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let queued = enqueue_action(&actions_path, action, job_ids_csv)?;
             println!("queued action {action} for {queued} jobs");
         }
+        "--enqueue-group-action" => {
+            let group = args.get(2).map(String::as_str).unwrap_or("");
+            let action = args.get(3).map(String::as_str).unwrap_or("");
+            let items = read_state(&state_path)?;
+            let job_ids = collect_job_ids_by_group(&items, group);
+            let queued = enqueue_action_ids(&actions_path, action, job_ids)?;
+            println!("queued group action {action} for group {group} ({queued} jobs)");
+        }
+        "--enqueue-starred-action" => {
+            let action = args.get(2).map(String::as_str).unwrap_or("");
+            let items = read_state(&state_path)?;
+            let job_ids = collect_starred_job_ids(&items);
+            let queued = enqueue_action_ids(&actions_path, action, job_ids)?;
+            println!("queued starred action {action} for {queued} jobs");
+        }
         "--drain-actions" => {
             let actions = drain_actions(&actions_path)?;
             println!("{}", serde_json::to_string(&actions)?);
         }
         _ => {
             eprintln!(
-                "Usage:\n  quicklaunch_helper --sync-json\n  quicklaunch_helper --list\n  quicklaunch_helper --summary\n  quicklaunch_helper --enqueue-action <action> <id1,id2,...>\n  quicklaunch_helper --drain-actions"
+                "Usage:\n  quicklaunch_helper --sync-json\n  quicklaunch_helper --list\n  quicklaunch_helper --summary\n  quicklaunch_helper --enqueue-action <action> <id1,id2,...>\n  quicklaunch_helper --enqueue-group-action <group> <action>\n  quicklaunch_helper --enqueue-starred-action <action>\n  quicklaunch_helper --drain-actions"
             );
             std::process::exit(2);
         }
@@ -145,16 +160,42 @@ fn parse_job_ids_csv(value: &str) -> Vec<String> {
         .collect()
 }
 
-fn enqueue_action(
+fn collect_job_ids_by_group(items: &[QuickLaunchItem], group: &str) -> Vec<String> {
+    let normalized = group.trim();
+    items
+        .iter()
+        .filter(|item| item.group == normalized)
+        .map(|item| item.id.clone())
+        .collect()
+}
+
+fn collect_starred_job_ids(items: &[QuickLaunchItem]) -> Vec<String> {
+    items
+        .iter()
+        .filter(|item| item.is_starred)
+        .map(|item| item.id.clone())
+        .collect()
+}
+
+fn is_supported_action(action: &str) -> bool {
+    matches!(
+        action,
+        "start" | "stop" | "kickstart" | "enable" | "disable" | "load" | "unload"
+    )
+}
+
+fn enqueue_action_ids(
     actions_path: &Path,
     action: &str,
-    job_ids_csv: &str,
+    job_ids: Vec<String>,
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let normalized_action = action.trim().to_ascii_lowercase();
     if normalized_action.is_empty() {
         return Err("action is required".into());
     }
-    let job_ids = parse_job_ids_csv(job_ids_csv);
+    if !is_supported_action(normalized_action.as_str()) {
+        return Err(format!("unsupported action: {normalized_action}").into());
+    }
     if job_ids.is_empty() {
         return Err("at least one job id is required".into());
     }
@@ -166,6 +207,15 @@ fn enqueue_action(
     });
     write_actions(actions_path, &queued)?;
     Ok(job_ids.len())
+}
+
+fn enqueue_action(
+    actions_path: &Path,
+    action: &str,
+    job_ids_csv: &str,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    let job_ids = parse_job_ids_csv(job_ids_csv);
+    enqueue_action_ids(actions_path, action, job_ids)
 }
 
 fn drain_actions(path: &Path) -> Result<Vec<QuickLaunchAction>, Box<dyn std::error::Error>> {
@@ -191,8 +241,9 @@ mod tests {
     use launchpad::adapter::quicklaunch::QuickLaunchItem;
 
     use super::{
-        drain_actions, enqueue_action, parse_items_payload, parse_job_ids_csv,
-        resolve_actions_path, resolve_state_path, summarize_groups,
+        collect_job_ids_by_group, collect_starred_job_ids, drain_actions, enqueue_action,
+        enqueue_action_ids, parse_items_payload, parse_job_ids_csv, resolve_actions_path,
+        resolve_state_path, summarize_groups,
     };
 
     #[test]
@@ -275,5 +326,41 @@ mod tests {
 
         let drained_again = drain_actions(&path).expect("drain");
         assert!(drained_again.is_empty());
+    }
+
+    #[test]
+    fn collect_job_ids_helpers_filter_expected_items() {
+        let items = vec![
+            QuickLaunchItem {
+                id: "id-a".to_string(),
+                title: "A".to_string(),
+                status: "loaded".to_string(),
+                group: "user-agent".to_string(),
+                is_starred: true,
+                updated_at_unix_secs: 1,
+            },
+            QuickLaunchItem {
+                id: "id-b".to_string(),
+                title: "B".to_string(),
+                status: "running".to_string(),
+                group: "global-agent".to_string(),
+                is_starred: false,
+                updated_at_unix_secs: 2,
+            },
+        ];
+        assert_eq!(
+            collect_job_ids_by_group(&items, "user-agent"),
+            vec!["id-a".to_string()]
+        );
+        assert_eq!(collect_starred_job_ids(&items), vec!["id-a".to_string()]);
+    }
+
+    #[test]
+    fn enqueue_action_ids_rejects_unsupported_action() {
+        let temp = TempDir::new().expect("temp");
+        let path = temp.path().join("actions.json");
+        let err = enqueue_action_ids(&path, "restart", vec!["id-1".to_string()])
+            .expect_err("unsupported action should fail");
+        assert!(err.to_string().contains("unsupported action"));
     }
 }

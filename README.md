@@ -118,6 +118,8 @@ Helper command queue is also supported for external menu integrations:
 
 ```bash
 cargo run --bin quicklaunch_helper -- --enqueue-action start id-1,id-2
+cargo run --bin quicklaunch_helper -- --enqueue-group-action user-agent stop
+cargo run --bin quicklaunch_helper -- --enqueue-starred-action disable
 cargo run --bin quicklaunch_helper -- --drain-actions
 ```
 

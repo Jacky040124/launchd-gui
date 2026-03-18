@@ -126,7 +126,8 @@ Slint provides a minimal desktop UI:
 - `src/bin/quicklaunch_helper.rs`
   - bridge helper that accepts `--sync-json` payloads
   - supports `--list` and `--summary` for external menu integrations
-  - supports `--enqueue-action` and `--drain-actions` for remote control queue
+  - supports `--enqueue-action` / `--enqueue-group-action` / `--enqueue-starred-action`
+    and `--drain-actions` for remote control queue
 
 ## Safety Boundaries
 
