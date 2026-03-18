@@ -51,6 +51,7 @@ LaunchPad currently includes these core capabilities:
    - local heuristic fallback when remote provider unavailable
    - in-app provider switching (openai/openrouter/lm-studio/ollama/xai/anthropic/google/claude-sidecar)
    - patch diff preview + explicit confirm before applying edits to editor
+   - provider HTTP calls for OpenAI-compatible, Anthropic, and Google (configurable endpoint/model)
 11. **Command palette (Raycast-style interaction)**:
    - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `logs`)
 

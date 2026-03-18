@@ -16,8 +16,8 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
    - LaunchPad 会把当前 XML 快照通过 stdin 传入 sidecar，并读取 stdout 结果
 
 2. **OpenAI-compatible / Anthropic / Google**
-   - 已有模块骨架（`openai_compat.rs` / `anthropic.rs` / `google.rs`）
-   - 当前构建仍返回 “not configured” 提示，后续阶段会接入真实 API 调用
+   - 已接入基础 HTTP 调用（`openai_compat.rs` / `anthropic.rs` / `google.rs`）
+   - 当缺少 API Key 或 endpoint/model 配置不正确时，会返回明确错误提示
    - OpenAI-compatible 预置名称：`openai` / `openrouter` / `lm-studio` / `ollama` / `xai`
 
 3. **本地启发式 fallback**
@@ -38,6 +38,12 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
   - 指定默认 provider（如 `heuristic-local`、`openai`、`claude-sidecar`）
 - `LAUNCHPAD_CLAUDE_SIDECAR`
   - 可选，指定 sidecar 可执行路径
+- `LAUNCHPAD_<PROVIDER>_BASE_URL`
+  - 可选，覆盖 provider 默认 endpoint（如 `LAUNCHPAD_OPENROUTER_BASE_URL`）
+- `LAUNCHPAD_<PROVIDER>_MODEL`
+  - 可选，覆盖默认模型名
+- `LAUNCHPAD_<PROVIDER>_API_KEY`
+  - provider key（openai/openrouter/lm-studio/ollama/xai/anthropic/google）
 
 ## 安全策略（当前阶段）
 

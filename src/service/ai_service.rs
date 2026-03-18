@@ -42,8 +42,8 @@ impl AiService {
             "xai".to_string(),
             Arc::new(OpenAiCompatibleProvider::new("xai")),
         );
-        providers.insert("anthropic".to_string(), Arc::new(AnthropicProvider));
-        providers.insert("google".to_string(), Arc::new(GoogleProvider));
+        providers.insert("anthropic".to_string(), Arc::new(AnthropicProvider::default()));
+        providers.insert("google".to_string(), Arc::new(GoogleProvider::default()));
 
         if let Some(sidecar) = ClaudeAgentSidecarProvider::from_env() {
             providers.insert("claude-sidecar".to_string(), Arc::new(sidecar));

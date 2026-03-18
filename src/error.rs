@@ -15,6 +15,9 @@ pub enum AppError {
     #[error("json parse error: {0}")]
     Json(#[from] serde_json::Error),
 
+    #[error("http request error: {0}")]
+    Http(#[from] reqwest::Error),
+
     #[error("command `{command}` failed: {stderr}")]
     CommandFailed { command: String, stderr: String },
 
