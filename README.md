@@ -1,41 +1,74 @@
-# LaunchPad - Modern macOS launchd Manager
+# LaunchPad
 
-A free, open-source GUI tool for managing macOS launchd services.
+A modern, lightweight, minimalist GUI hub for managing `launchd` jobs on macOS.
 
-## Problem
+## Current MVP Scope
 
-macOS launchd is powerful but notoriously difficult to use. Existing tools like LaunchControl and Lingon X are paid (~$15) and feel dated. There's no good free, modern alternative.
+LaunchPad currently focuses on three core operations:
 
-## Features (Planned)
+1. **Status read** for jobs under:
+   - `~/Library/LaunchAgents`
+   - `/Library/LaunchAgents`
+   - `/Library/LaunchDaemons` (read-only)
+2. **Trigger actions**:
+   - `start`
+   - `stop`
+   - `kickstart`
+3. **Delete flow** with safety guard:
+   - two-step confirmation
+   - capability checks (scope + file permission)
 
-- **Visual Dashboard** - See all your launch agents & daemons at a glance
-- **Job Status** - Real-time status (running, scheduled, failed, disabled)
-- **Form-based Editor** - Create/edit plist files without touching XML
-- **Log Viewer** - Real-time log streaming for debugging
-- **One-click Actions** - Enable/disable/start/stop services instantly
-- **Templates** - Quick-start templates for common tasks:
-  - Run scripts on schedule (daily, weekly, etc.)
-  - Launch apps at startup
-  - Watch folders for changes
-  - Periodic cleanup tasks
-- **Menu Bar Access** - Quick access to common actions
-
-## Scope
-
-- User launch agents (`~/Library/LaunchAgents`)
-- Global launch agents (`/Library/LaunchAgents`)
-- System daemons (`/Library/LaunchDaemons`) - view only
+The app intentionally does **not** include job creation/editing in this iteration.
 
 ## Tech Stack
 
-TBD - Considering:
-- **Swift + SwiftUI** - Native macOS, best performance
-- **Tauri + React** - Lighter weight, modern web stack
-- **Electron** - Fastest to prototype
+- **Rust**
+- **Slint** (native desktop UI, no web runtime)
+- `plist` crate for parsing job labels
+- `launchctl` command adapter for status/actions
 
-## Status
+## Project Structure
 
-🚧 **Planning phase** - Contributions and ideas welcome!
+```text
+src/
+  adapter/         # filesystem + launchctl + plist adapters
+  domain/          # job/status/action models
+  service/         # business orchestration (list/trigger/delete)
+  main.rs          # Slint UI wiring + callbacks
+ui/
+  main.slint       # minimalist UI
+tests/
+  *_tests.rs       # integration tests with mocks
+```
+
+## Development
+
+### Requirements
+
+- Rust stable (project validated on `rustc 1.94+`)
+- Linux build dependencies for CI/local check:
+  - `pkg-config`
+  - `libfontconfig1-dev`
+
+### Run
+
+```bash
+cargo run
+```
+
+### Validate
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets
+```
+
+## Runtime Notes
+
+- Real launchd behavior can only be fully validated on **macOS**.
+- On Linux, tests validate parsing/flow/control logic through mocks.
+- System daemons are intentionally non-destructive (read-only capabilities).
 
 ## License
 

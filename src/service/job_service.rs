@@ -48,7 +48,10 @@ impl JobService {
             let status = if error.is_some() {
                 JobStatus::Unknown
             } else {
-                match self.launchctl.print(&scope.target_for_label(self.uid, &label)) {
+                match self
+                    .launchctl
+                    .print(&scope.target_for_label(self.uid, &label))
+                {
                     Ok(output) => status_from_print_output(&output),
                     Err(AppError::CommandFailed { stderr, .. }) if is_not_loaded_error(&stderr) => {
                         JobStatus::Unknown

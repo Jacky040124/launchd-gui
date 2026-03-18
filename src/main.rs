@@ -33,7 +33,12 @@ impl AppController {
         let uid = current_uid();
 
         Self {
-            job_service: JobService::new(FileScanner::new_default(), plist_reader, launchctl.clone(), uid),
+            job_service: JobService::new(
+                FileScanner::new_default(),
+                plist_reader,
+                launchctl.clone(),
+                uid,
+            ),
             action_service: ActionService::new(launchctl.clone(), uid),
             delete_service: DeleteService::new(launchctl, fs_ops, uid),
             jobs: Vec::new(),
@@ -54,7 +59,9 @@ impl AppController {
                 if self.jobs.is_empty() {
                     self.selected_index = None;
                     self.update_selection_details(ui);
-                    ui.set_status_message("No launchd jobs found in configured directories.".into());
+                    ui.set_status_message(
+                        "No launchd jobs found in configured directories.".into(),
+                    );
                     return;
                 }
 

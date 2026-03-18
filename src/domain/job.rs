@@ -91,9 +91,8 @@ pub fn compute_capabilities(scope: &JobScope, path: &Path) -> JobCapabilities {
         can_trigger: true,
         can_delete,
         trigger_reason: None,
-        delete_reason: (!can_delete).then_some(
-            "Insufficient filesystem permissions for deleting this plist".to_string(),
-        ),
+        delete_reason: (!can_delete)
+            .then_some("Insufficient filesystem permissions for deleting this plist".to_string()),
     }
 }
 
