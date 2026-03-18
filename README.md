@@ -93,6 +93,8 @@ tests/
   - `LAUNCHPAD_QUICKLAUNCH_STARRED_ONLY` (`true/false`, default true)
   - `LAUNCHPAD_QUICKLAUNCH_MAX_ITEMS` (default 12)
   - `LAUNCHPAD_QUICKLAUNCH_HELPER` (optional helper executable receiving `--sync-json`)
+  - when helper is not set and QuickLaunch is enabled, LaunchPad writes sync snapshot to:
+    `~/.config/launchpad/quicklaunch-items.json`
 
 ### Run
 

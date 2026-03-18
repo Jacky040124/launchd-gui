@@ -214,3 +214,16 @@ Expected:
 Expected:
 - AI 改动先以 diff 预览展示，不会直接改文件。
 - 只有经过确认后才应用到编辑器，再由 Save 落盘。
+
+## N. QuickLaunch Snapshot Sync
+
+1. Set environment variable before launch:
+   - `LAUNCHPAD_QUICKLAUNCH_ENABLE=true`
+2. Start LaunchPad and click **Refresh**.
+3. Verify status message includes QuickLaunch sync result.
+4. Check snapshot file:
+   - `~/.config/launchpad/quicklaunch-items.json`
+
+Expected:
+- When helper is not configured, LaunchPad writes JSON snapshot for external menu helper.
+- Snapshot count respects starred-only and max-items config.

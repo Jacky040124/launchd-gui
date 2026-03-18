@@ -11,7 +11,8 @@ use launchpad::adapter::log_stream::SystemLogStreamClient;
 use launchpad::adapter::plist_doc::SystemPlistDocumentStore;
 use launchpad::adapter::plist_reader::SystemPlistReader;
 use launchpad::adapter::quicklaunch::{
-    BridgeQuickLaunchProvider, NoopQuickLaunchProvider, QuickLaunchProvider,
+    BridgeQuickLaunchProvider, FileQuickLaunchProvider, NoopQuickLaunchProvider,
+    QuickLaunchProvider,
 };
 use launchpad::adapter::star_store::JsonStarStore;
 use launchpad::config::AppConfig;
@@ -161,9 +162,15 @@ impl AppController {
         let fs_ops = Arc::new(SystemFsOps);
         let clipboard = Arc::new(SystemClipboardClient);
         let uid = current_uid();
-        let quicklaunch_provider = BridgeQuickLaunchProvider::from_env()
-            .map(|provider| Arc::new(provider) as Arc<dyn QuickLaunchProvider>)
-            .unwrap_or_else(|| Arc::new(NoopQuickLaunchProvider) as Arc<dyn QuickLaunchProvider>);
+        let quicklaunch_provider: Arc<dyn QuickLaunchProvider> = if config.quicklaunch_enabled {
+            BridgeQuickLaunchProvider::from_env()
+                .map(|provider| Arc::new(provider) as Arc<dyn QuickLaunchProvider>)
+                .unwrap_or_else(|| {
+                    Arc::new(FileQuickLaunchProvider::new_default()) as Arc<dyn QuickLaunchProvider>
+                })
+        } else {
+            Arc::new(NoopQuickLaunchProvider) as Arc<dyn QuickLaunchProvider>
+        };
         let mut star_service = StarService::new(Arc::new(JsonStarStore::new_default()));
         let _ = star_service.load();
 
