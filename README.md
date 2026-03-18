@@ -56,7 +56,7 @@ LaunchPad currently includes these core capabilities:
    - provider HTTP calls for OpenAI-compatible, Anthropic, and Google (configurable endpoint/model)
 11. **Command palette (Raycast-style interaction)**:
    - run commands from a single input (`refresh`, `start`, `stop`, `restart`, `enable`, `new user`, `save`, `save load`, `save load enable`, `logs`, `logs live`, `logs history`)
-   - batch starred controls (`start starred`, `stop starred`, `enable starred`, etc.)
+   - batch starred controls (`start starred`, `stop starred`, `restart starred`, `enable starred`, etc.)
    - AI provider commands (`providers`, `provider <name>`)
 
 ## Tech Stack

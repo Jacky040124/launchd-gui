@@ -421,6 +421,9 @@ impl AppController {
             "disable starred" => self.trigger_starred_batch(ui, TriggerAction::Disable),
             "load starred" => self.trigger_starred_batch(ui, TriggerAction::Load),
             "unload starred" => self.trigger_starred_batch(ui, TriggerAction::Unload),
+            "restart starred" | "kickstart starred" => {
+                self.trigger_starred_batch(ui, TriggerAction::Kickstart)
+            }
             "save" => self.save_editor(ui),
             "save load" => self.save_editor_and_load(ui),
             "save load enable" => self.save_editor_load_enable(ui),
