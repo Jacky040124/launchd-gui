@@ -130,7 +130,8 @@ Slint provides a minimal desktop UI:
     and `--drain-actions` for remote control queue
 - `src/bin/quicklaunch_menubar.rs` (macOS only)
   - native tray/menu-bar shell for QuickLaunch controls
-  - reads summary + item snapshot via helper bridge and executes starred/group actions directly
+  - reads summary via helper bridge and enqueues starred/group actions
+  - actions are applied by LaunchPad refresh through shared service pipeline
 
 ## Safety Boundaries
 

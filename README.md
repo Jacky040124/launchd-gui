@@ -133,7 +133,7 @@ For macOS native menu-bar control, the repository also includes:
 cargo run --bin quicklaunch_menubar
 ```
 
-`quicklaunch_menubar` reads summary from `quicklaunch_helper` and can execute starred/group batch actions directly from the menu bar via `launchctl`.
+`quicklaunch_menubar` reads summary from `quicklaunch_helper` and can enqueue starred/group batch actions from the menu bar; LaunchPad applies them on refresh through the shared action service.
 
 ### Run
 
