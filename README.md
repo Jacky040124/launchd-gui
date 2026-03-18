@@ -47,6 +47,8 @@ LaunchPad currently includes these core capabilities:
    - natural-language prompt for launchd edits
    - Claude Agent sidecar integration hook
    - local heuristic fallback when remote provider unavailable
+11. **Command palette (Raycast-style interaction)**:
+   - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `logs`)
 
 ## Tech Stack
 
@@ -117,7 +119,7 @@ LaunchPad uses a layered performance approach:
 
 - No full expert editor for arbitrary nested keys yet (standard editor first).
 - AI providers are scaffolded; remote API wiring is still being expanded.
-- UI currently focuses on list/detail/action flow and does not include menu bar integration.
+- QuickLaunch menubar integration is scaffolded but not active yet in this build.
 - `launchctl` output formats can vary across macOS versions; detail parsing is resilient but best-effort.
 
 ## Next Roadmap

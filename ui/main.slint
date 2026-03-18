@@ -7,6 +7,7 @@ export component MainWindow inherits Window {
     in-out property <bool> confirm_delete_visible: false;
     in-out property <string> confirm_delete_label: "";
     in-out property <string> query_text: "";
+    in-out property <string> command_query: "";
     in-out property <string> active_filter_text: "all scopes";
     in-out property <string> status_filter_text: "Status:any";
     in-out property <string> disabled_filter_text: "Disabled:any";
@@ -53,6 +54,8 @@ export component MainWindow inherits Window {
     callback confirm_delete();
     callback cancel_delete();
     callback query_changed(string);
+    callback command_query_changed(string);
+    callback command_requested();
     callback scope_filter_requested(string);
     callback status_filter_requested(string);
     callback cycle_disabled_filter_requested();
@@ -93,6 +96,18 @@ export component MainWindow inherits Window {
                 text: "Refresh";
                 enabled: !root.busy;
                 clicked => { root.refresh_requested(); }
+            }
+            LineEdit {
+                width: 380px;
+                enabled: !root.busy;
+                text <=> root.command_query;
+                placeholder-text: "Command palette: refresh / enable / new user / save / logs";
+                edited(value) => { root.command_query_changed(value); }
+            }
+            Button {
+                text: "Run Command";
+                enabled: !root.busy;
+                clicked => { root.command_requested(); }
             }
             Text {
                 text: root.busy ? "LaunchPad · refreshing jobs..." : "LaunchPad · launchd control center";

@@ -171,3 +171,19 @@ Expected:
 - Logs update to the selected job context.
 - Empty results show a friendly message instead of crashing.
 - On unsupported environments, an explicit error is shown in status/log panel.
+
+## L. Command Palette
+
+1. In top command palette input, type `refresh` and click **Run Command**.
+2. Select a controllable job, then run:
+   - `start`
+   - `stop`
+   - `enable`
+   - `disable`
+3. Run `new user` and verify editor enters new-job draft mode.
+4. Run `save` after editing fields and verify save/create result.
+5. Run `logs` and verify logs panel refreshes.
+
+Expected:
+- Commands execute the same actions as direct buttons.
+- Unknown command returns a clear hint with supported examples.

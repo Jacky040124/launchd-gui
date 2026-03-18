@@ -124,6 +124,7 @@ struct AppController {
     visible_indices: Vec<usize>,
     runtime_details: HashMap<String, JobRuntimeDetails>,
     search_query: String,
+    command_query: String,
     scope_filter: Option<ScopeFilter>,
     advanced_filter: AdvancedFilter,
     starred_only: bool,
@@ -163,6 +164,7 @@ impl AppController {
             visible_indices: Vec::new(),
             runtime_details: HashMap::new(),
             search_query: String::new(),
+            command_query: String::new(),
             scope_filter: None,
             advanced_filter: AdvancedFilter::default(),
             starred_only: false,
@@ -298,6 +300,44 @@ impl AppController {
             )
             .into(),
         );
+    }
+
+    fn command_query_changed(&mut self, ui: &MainWindow, query: &str) {
+        self.command_query = query.to_string();
+        ui.set_command_query(self.command_query.clone().into());
+    }
+
+    fn run_command_palette(&mut self, ui: &MainWindow) {
+        let normalized = self.command_query.trim().to_ascii_lowercase();
+        if normalized.is_empty() {
+            ui.set_status_message("Type a command first.".into());
+            return;
+        }
+
+        match normalized.as_str() {
+            "refresh" => self.refresh(ui),
+            "start" => self.trigger(ui, TriggerAction::Start),
+            "stop" => self.trigger(ui, TriggerAction::Stop),
+            "kickstart" => self.trigger(ui, TriggerAction::Kickstart),
+            "enable" => self.trigger(ui, TriggerAction::Enable),
+            "disable" => self.trigger(ui, TriggerAction::Disable),
+            "load" => self.trigger(ui, TriggerAction::Load),
+            "unload" => self.trigger(ui, TriggerAction::Unload),
+            "save" => self.save_editor(ui),
+            "logs" => self.load_recent_logs(ui),
+            "star" | "unstar" => self.toggle_star(ui),
+            "new user" | "new user job" => self.start_new_job_editor(ui, JobScope::UserAgent),
+            "new global" | "new global job" => self.start_new_job_editor(ui, JobScope::GlobalAgent),
+            _ => {
+                ui.set_status_message(
+                    format!(
+                        "Unknown command '{}'. Try: refresh/start/stop/enable/load/new user/save/logs",
+                        normalized
+                    )
+                    .into(),
+                );
+            }
+        }
     }
 
     fn scope_filter_requested(&mut self, ui: &MainWindow, value: &str) {
@@ -1183,6 +1223,28 @@ pub fn run() -> Result<(), slint::PlatformError> {
     {
         let ui_weak = ui.as_weak();
         let controller = controller.clone();
+        ui.on_command_query_changed(move |query| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .command_query_changed(&ui, query.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_command_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().run_command_palette(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
         ui.on_scope_filter_requested(move |scope| {
             if let Some(ui) = ui_weak.upgrade() {
                 controller
@@ -1447,6 +1509,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
 
     controller.borrow().update_advanced_filter_controls(&ui);
     controller.borrow().sync_editor_to_ui(&ui);
+    ui.set_command_query("".into());
     ui.set_log_view_text("Select a job to inspect logs.".into());
     controller.borrow_mut().refresh(&ui);
     ui.run()

@@ -6,4 +6,5 @@ pub mod launchctl;
 pub mod log_stream;
 pub mod plist_doc;
 pub mod plist_reader;
+pub mod quicklaunch;
 pub mod star_store;

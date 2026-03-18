@@ -37,6 +37,8 @@ This layer contains no process execution and is suitable for deterministic tests
 - `ai/`
   - provider abstraction and provider-specific adapters
   - includes Claude Agent sidecar bridge and provider stubs
+- `quicklaunch.rs`
+  - QuickLaunch menu-bar provider abstraction (current build includes no-op provider)
 - `launchctl.rs`
   - wraps `launchctl` command invocations and error normalization
   - parses `launchctl list` bulk status output
@@ -91,6 +93,7 @@ Slint provides a minimal desktop UI:
 - new user/global plist creation flow
 - built-in recent log viewer for selected job
 - AI suggestion panel for natural-language launchd guidance
+- command palette for keyboard-first actions
 - copy details action
 - action buttons
 - status message area
