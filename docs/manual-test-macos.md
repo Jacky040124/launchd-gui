@@ -224,6 +224,7 @@ Expected:
 
 1. Set environment variable before launch:
    - `LAUNCHPAD_QUICKLAUNCH_ENABLE=true`
+   - optional `LAUNCHPAD_QUICKLAUNCH_GROUP_BY=status`
 2. Start LaunchPad and click **Refresh**.
 3. Verify status message includes QuickLaunch sync result.
 4. Check snapshot file:
@@ -232,6 +233,7 @@ Expected:
 Expected:
 - When helper is not configured, LaunchPad writes JSON snapshot for external menu helper.
 - Snapshot count respects starred-only and max-items config.
+- Group field in JSON follows selected `LAUNCHPAD_QUICKLAUNCH_GROUP_BY` mode.
 
 ## O. QuickLaunch Helper Bridge CLI
 

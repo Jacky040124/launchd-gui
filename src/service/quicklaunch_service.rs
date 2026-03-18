@@ -9,6 +9,7 @@ pub struct QuickLaunchConfig {
     pub enabled: bool,
     pub starred_only: bool,
     pub max_items: usize,
+    pub group_by: QuickLaunchGroupBy,
 }
 
 impl Default for QuickLaunchConfig {
@@ -17,6 +18,35 @@ impl Default for QuickLaunchConfig {
             enabled: false,
             starred_only: true,
             max_items: 12,
+            group_by: QuickLaunchGroupBy::Scope,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuickLaunchGroupBy {
+    Scope,
+    Status,
+    StarredScope,
+}
+
+impl QuickLaunchGroupBy {
+    pub fn from_env_value(value: &str) -> Self {
+        match value.to_ascii_lowercase().as_str() {
+            "status" => Self::Status,
+            "starred-scope" => Self::StarredScope,
+            _ => Self::Scope,
+        }
+    }
+
+    fn group_for_job(self, job: &JobSummary) -> String {
+        match self {
+            Self::Scope => format!("{}", job.scope),
+            Self::Status => job.status_text().to_string(),
+            Self::StarredScope => {
+                let prefix = if job.is_starred { "starred" } else { "plain" };
+                format!("{prefix}:{}", job.scope)
+            }
         }
     }
 }
@@ -44,7 +74,7 @@ impl QuickLaunchService {
                 id: job.id.clone(),
                 title: format!("[{}] {}", job.scope, job.label),
                 status: job.status_text().to_string(),
-                group: format!("{}", job.scope),
+                group: self.config.group_by.group_for_job(job),
                 is_starred: job.is_starred,
             })
             .collect::<Vec<_>>();
@@ -64,7 +94,7 @@ mod tests {
     use crate::domain::status::JobStatus;
     use crate::error::AppResult;
 
-    use super::{QuickLaunchConfig, QuickLaunchService};
+    use super::{QuickLaunchConfig, QuickLaunchGroupBy, QuickLaunchService};
 
     #[derive(Debug, Default)]
     struct MockQuickLaunchProvider {
@@ -87,6 +117,7 @@ mod tests {
                 enabled: true,
                 starred_only: true,
                 max_items: 1,
+                group_by: QuickLaunchGroupBy::Scope,
             },
         );
 
@@ -103,6 +134,26 @@ mod tests {
         assert!(synced_items[0].title.contains("a"));
         assert_eq!(synced_items[0].group, "user-agent");
         assert!(synced_items[0].is_starred);
+    }
+
+    #[test]
+    fn group_mode_can_use_status() {
+        let provider = Arc::new(MockQuickLaunchProvider::default());
+        let service = QuickLaunchService::new(
+            provider.clone(),
+            QuickLaunchConfig {
+                enabled: true,
+                starred_only: false,
+                max_items: 2,
+                group_by: QuickLaunchGroupBy::Status,
+            },
+        );
+        let mut jobs = vec![job_fixture("a", false)];
+        jobs[0].status = JobStatus::Running;
+        let _ = service.sync_jobs(&jobs).expect("sync");
+
+        let synced_items = provider.synced.lock().expect("lock").clone();
+        assert_eq!(synced_items[0].group, "running");
     }
 
     fn job_fixture(label: &str, is_starred: bool) -> JobSummary {

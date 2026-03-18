@@ -6,6 +6,7 @@ pub struct AppConfig {
     pub quicklaunch_enabled: bool,
     pub quicklaunch_starred_only: bool,
     pub quicklaunch_max_items: usize,
+    pub quicklaunch_group_by: String,
 }
 
 impl AppConfig {
@@ -20,6 +21,8 @@ impl AppConfig {
                 .and_then(|value| value.parse::<usize>().ok())
                 .filter(|value| *value > 0)
                 .unwrap_or(12),
+            quicklaunch_group_by: env::var("LAUNCHPAD_QUICKLAUNCH_GROUP_BY")
+                .unwrap_or_else(|_| "scope".to_string()),
         }
     }
 }

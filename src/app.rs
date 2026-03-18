@@ -29,7 +29,9 @@ use launchpad::service::diagnostic_service::DiagnosticService;
 use launchpad::service::job_service::JobService;
 use launchpad::service::log_service::LogService;
 use launchpad::service::plist_service::PlistService;
-use launchpad::service::quicklaunch_service::{QuickLaunchConfig, QuickLaunchService};
+use launchpad::service::quicklaunch_service::{
+    QuickLaunchConfig, QuickLaunchGroupBy, QuickLaunchService,
+};
 use launchpad::service::star_service::StarService;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use tracing_subscriber::EnvFilter;
@@ -192,6 +194,7 @@ impl AppController {
                     enabled: config.quicklaunch_enabled,
                     starred_only: config.quicklaunch_starred_only,
                     max_items: config.quicklaunch_max_items,
+                    group_by: QuickLaunchGroupBy::from_env_value(&config.quicklaunch_group_by),
                 },
             ),
             plist_service: PlistService::new(Arc::new(SystemPlistDocumentStore)),
