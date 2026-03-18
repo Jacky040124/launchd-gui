@@ -39,6 +39,7 @@ export component MainWindow inherits Window {
     in-out property <string> editor_working_directory: "";
     in-out property <string> editor_start_interval: "";
     in-out property <string> editor_env_vars: "";
+    in-out property <string> editor_expert_entries: "";
     in-out property <bool> editor_run_at_load: false;
     in-out property <bool> editor_keep_alive: false;
     in-out property <string> editor_xml_preview: "";
@@ -46,6 +47,9 @@ export component MainWindow inherits Window {
     in-out property <string> log_view_text: "";
     in-out property <string> ai_prompt: "";
     in-out property <string> ai_response: "";
+    in-out property <string> key_panel_query: "";
+    in-out property <string> key_panel_count_text: "";
+    in-out property <[string]> key_panel_lines: [];
 
     callback refresh_requested();
     callback select_job(int);
@@ -73,6 +77,7 @@ export component MainWindow inherits Window {
     callback editor_working_dir_changed(string);
     callback editor_start_interval_changed(string);
     callback editor_env_changed(string);
+    callback editor_expert_entries_changed(string);
     callback toggle_editor_run_at_load();
     callback toggle_editor_keep_alive();
     callback save_editor_requested();
@@ -80,6 +85,8 @@ export component MainWindow inherits Window {
     callback refresh_logs_requested();
     callback ai_prompt_changed(string);
     callback ai_request_requested();
+    callback key_panel_query_changed(string);
+    callback key_panel_add_requested(int);
 
     title: "LaunchPad";
     width: 1120px;
@@ -481,6 +488,17 @@ export component MainWindow inherits Window {
                     }
                 }
 
+                HorizontalBox {
+                    spacing: 8px;
+                    LineEdit {
+                        width: 980px;
+                        enabled: !root.busy;
+                        text <=> root.editor_expert_entries;
+                        placeholder-text: "Expert keys: KEY=VALUE, KEY2=VALUE2 (for undocumented or advanced launchd keys)";
+                        edited(value) => { root.editor_expert_entries_changed(value); }
+                    }
+                }
+
                 Rectangle {
                     border-width: 1px;
                     border-color: #eaecf0;
@@ -572,6 +590,55 @@ export component MainWindow inherits Window {
                             text: root.ai_response;
                             wrap: word-wrap;
                             color: #175cd3;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    border-width: 1px;
+                    border-color: #d0d5dd;
+                    border-radius: 8px;
+                    background: #ffffff;
+                    VerticalBox {
+                        padding: 8px;
+                        spacing: 6px;
+                        HorizontalBox {
+                            spacing: 8px;
+                            LineEdit {
+                                width: 320px;
+                                enabled: !root.busy;
+                                text <=> root.key_panel_query;
+                                placeholder-text: "Search launchd keys...";
+                                edited(value) => { root.key_panel_query_changed(value); }
+                            }
+                            Text {
+                                text: "Key Panel · " + root.key_panel_count_text;
+                                vertical-alignment: center;
+                                color: #475467;
+                            }
+                        }
+                        Rectangle {
+                            border-width: 1px;
+                            border-color: #eaecf0;
+                            border-radius: 8px;
+                            background: #fcfcfd;
+                            clip: true;
+                            height: 170px;
+                            ListView {
+                                for line[index] in root.key_panel_lines : Rectangle {
+                                    height: 34px;
+                                    background: #ffffff;
+                                    Text {
+                                        text: line;
+                                        x: 8px;
+                                        y: (parent.height - self.height) / 2;
+                                        color: #344054;
+                                    }
+                                    TouchArea {
+                                        clicked => { root.key_panel_add_requested(index); }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -19,6 +19,7 @@ LaunchPad is split into three layers to keep launchd logic testable and UI light
 - `plist_document.rs`
   - standard plist editor document model
   - editor mode enum and documented key definitions
+  - searchable 36+ key definitions and standard-key classifier
 
 This layer contains no process execution and is suitable for deterministic tests.
 
@@ -32,6 +33,7 @@ This layer contains no process execution and is suitable for deterministic tests
 - `plist_doc.rs`
   - loads/saves standard plist editor model
   - serializes XML preview
+  - preserves expert string key entries for advanced launchd options
 - `log_stream.rs`
   - wraps `log show` for selected-label recent logs (macOS)
 - `ai/`
@@ -72,7 +74,7 @@ Adapters are trait-based, so tests can inject mock behavior.
 - `plist_service.rs`
   - standard editor load/save orchestration
   - new plist creation in allowed scope directories
-  - XML preview and input parsing helpers
+  - XML preview and input parsing helpers (env + expert key/value entries)
 - `diagnostic_service.rs`
   - static rule analysis for plist validity and safety hints
 - `log_service.rs`

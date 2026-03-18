@@ -197,6 +197,7 @@ mod tests {
             start_interval: Some(0),
             working_directory: Some("tmp".to_string()),
             environment_variables: BTreeMap::from([("my key".to_string(), "1".to_string())]),
+            extra_string_keys: BTreeMap::new(),
         };
 
         let issues = service.analyze(&document);

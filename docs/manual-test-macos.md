@@ -149,6 +149,7 @@ Expected:
    - Label / Program / ProgramArguments / WorkingDirectory
    - StartInterval
    - EnvironmentVariables (`KEY=VALUE, KEY2=VALUE2`)
+   - Expert keys (`KEY=VALUE, KEY2=VALUE2`)
    - RunAtLoad / KeepAlive toggles
 3. Confirm XML preview updates immediately as fields change.
 4. Click **Save** and verify status message indicates success.
@@ -159,6 +160,17 @@ Expected:
 - Editor shows validation errors for invalid values (for example malformed env pairs).
 - Existing plist edits can be saved safely.
 - New plist creation succeeds in allowed directories and is visible after refresh.
+
+## J2. Key Panel (search + add)
+
+1. In editor key panel search box, type `interval` and verify matched keys shrink.
+2. Click a key row (for example **StartInterval**).
+3. Verify corresponding editor template is injected (for example StartInterval populated).
+4. Click an advanced key (for example `ThrottleInterval`) and verify it is added into **Expert keys** field.
+
+Expected:
+- Key panel supports search.
+- Clicking key row injects a reasonable default/template without crashing.
 
 ## K. Built-in Log Viewer
 

@@ -5,7 +5,7 @@ use std::path::Path;
 
 use plist::{Dictionary, Value};
 
-use crate::domain::plist_document::StandardPlistDocument;
+use crate::domain::plist_document::{is_standard_managed_key, StandardPlistDocument};
 use crate::error::AppResult;
 
 pub trait PlistDocumentStore: Send + Sync {
@@ -98,6 +98,18 @@ fn standard_document_from_value(value: &Value) -> StandardPlistDocument {
         .and_then(|value| value.as_dictionary())
         .map(dictionary_to_map)
         .unwrap_or_default();
+    document.extra_string_keys = dict
+        .iter()
+        .filter_map(|(key, value)| {
+            (!is_standard_managed_key(key))
+                .then(|| {
+                    value
+                        .as_string()
+                        .map(|text| (key.clone(), text.to_string()))
+                })
+                .flatten()
+        })
+        .collect();
 
     document
 }
@@ -156,6 +168,12 @@ fn standard_document_to_value(document: &StandardPlistDocument) -> Value {
         );
     }
 
+    for (key, value) in &document.extra_string_keys {
+        if !is_standard_managed_key(key) && !key.trim().is_empty() {
+            dict.insert(key.clone(), Value::String(value.clone()));
+        }
+    }
+
     Value::Dictionary(dict)
 }
 
@@ -204,6 +222,10 @@ mod tests {
                 ("ENV_A".to_string(), "1".to_string()),
                 ("ENV_B".to_string(), "2".to_string()),
             ]),
+            extra_string_keys: BTreeMap::from([(
+                "ThrottleInterval".to_string(),
+                "120".to_string(),
+            )]),
         };
 
         store

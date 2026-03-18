@@ -63,29 +63,23 @@ impl PlistService {
     }
 
     pub fn parse_env_pairs(&self, raw: &str) -> AppResult<BTreeMap<String, String>> {
-        let mut envs = BTreeMap::new();
-        for token in raw
-            .split(',')
-            .map(str::trim)
-            .filter(|item| !item.is_empty())
-        {
-            let (key, value) = token.split_once('=').ok_or_else(|| {
-                AppError::Validation(format!(
-                    "Environment variable format invalid: `{token}` (expected KEY=VALUE)"
-                ))
-            })?;
-            if key.trim().is_empty() {
-                return Err(AppError::Validation(
-                    "Environment variable key cannot be empty".to_string(),
-                ));
-            }
-            envs.insert(key.trim().to_string(), value.trim().to_string());
-        }
-        Ok(envs)
+        parse_key_value_pairs(raw, "Environment variable")
     }
 
     pub fn format_env_pairs(&self, envs: &BTreeMap<String, String>) -> String {
         envs.iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    pub fn parse_extra_pairs(&self, raw: &str) -> AppResult<BTreeMap<String, String>> {
+        parse_key_value_pairs(raw, "Expert key")
+    }
+
+    pub fn format_extra_pairs(&self, extras: &BTreeMap<String, String>) -> String {
+        extras
+            .iter()
             .map(|(key, value)| format!("{key}={value}"))
             .collect::<Vec<_>>()
             .join(", ")
@@ -138,6 +132,28 @@ impl PlistService {
         };
         Ok(base.join(filename))
     }
+}
+
+fn parse_key_value_pairs(raw: &str, context: &str) -> AppResult<BTreeMap<String, String>> {
+    let mut map = BTreeMap::new();
+    for token in raw
+        .split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+    {
+        let (key, value) = token.split_once('=').ok_or_else(|| {
+            AppError::Validation(format!(
+                "{context} format invalid: `{token}` (expected KEY=VALUE)"
+            ))
+        })?;
+        if key.trim().is_empty() {
+            return Err(AppError::Validation(format!(
+                "{context} key cannot be empty"
+            )));
+        }
+        map.insert(key.trim().to_string(), value.trim().to_string());
+    }
+    Ok(map)
 }
 
 #[cfg(test)]
@@ -242,5 +258,25 @@ mod tests {
             ])
         );
         assert_eq!(service.format_env_pairs(&parsed), "A=1, B=two");
+    }
+
+    #[test]
+    fn parse_and_format_expert_pairs_roundtrip() {
+        let store = Arc::new(MockPlistStore::default());
+        let service = PlistService::with_home_dir(store, Some(PathBuf::from("/Users/demo")));
+        let parsed = service
+            .parse_extra_pairs("ThrottleInterval=15, Nice=5")
+            .expect("parse expert pairs");
+        assert_eq!(
+            parsed,
+            BTreeMap::from([
+                ("Nice".to_string(), "5".to_string()),
+                ("ThrottleInterval".to_string(), "15".to_string()),
+            ])
+        );
+        assert_eq!(
+            service.format_extra_pairs(&parsed),
+            "Nice=5, ThrottleInterval=15"
+        );
     }
 }

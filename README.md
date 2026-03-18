@@ -41,6 +41,8 @@ LaunchPad currently includes these core capabilities:
    - real-time XML preview while editing
    - real-time diagnostics with issue descriptions and fix suggestions
    - create new user/global plist from the app
+   - expert key entries (`KEY=VALUE`) for advanced/undocumented string keys
+   - searchable key panel (36+ documented launchd keys, click to inject templates)
 9. **Built-in log viewer (selected job)**:
    - fetch recent logs by selected label (no need to open Console.app)
 10. **AI suggestion panel (native workflow scaffold)**:

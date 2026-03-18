@@ -15,7 +15,7 @@ use launchpad::domain::action::TriggerAction;
 use launchpad::domain::filter::AdvancedFilter;
 use launchpad::domain::job::{JobScope, JobSummary};
 use launchpad::domain::job_detail::JobRuntimeDetails;
-use launchpad::domain::plist_document::StandardPlistDocument;
+use launchpad::domain::plist_document::{search_key_defs, LaunchdKeyDef, StandardPlistDocument};
 use launchpad::domain::status::JobStatus;
 use launchpad::service::action_service::ActionService;
 use launchpad::service::ai_service::AiService;
@@ -82,6 +82,7 @@ struct EditorState {
     start_interval: String,
     working_directory: String,
     environment_variables: String,
+    expert_entries: String,
     xml_preview: String,
     diagnostics_text: String,
     ai_prompt: String,
@@ -102,6 +103,7 @@ impl EditorState {
                 .unwrap_or_default(),
             working_directory: document.working_directory.clone().unwrap_or_default(),
             environment_variables: plist_service.format_env_pairs(&document.environment_variables),
+            expert_entries: plist_service.format_extra_pairs(&document.extra_string_keys),
             xml_preview: String::new(),
             diagnostics_text: String::new(),
             ai_prompt: String::new(),
@@ -125,6 +127,8 @@ struct AppController {
     runtime_details: HashMap<String, JobRuntimeDetails>,
     search_query: String,
     command_query: String,
+    key_panel_query: String,
+    visible_key_defs: Vec<&'static LaunchdKeyDef>,
     scope_filter: Option<ScopeFilter>,
     advanced_filter: AdvancedFilter,
     starred_only: bool,
@@ -165,6 +169,8 @@ impl AppController {
             runtime_details: HashMap::new(),
             search_query: String::new(),
             command_query: String::new(),
+            key_panel_query: String::new(),
+            visible_key_defs: search_key_defs(""),
             scope_filter: None,
             advanced_filter: AdvancedFilter::default(),
             starred_only: false,
@@ -567,6 +573,83 @@ impl AppController {
         self.refresh_editor_preview(ui);
     }
 
+    fn editor_expert_entries_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.expert_entries = value.trim().to_string();
+        self.refresh_editor_preview(ui);
+    }
+
+    fn key_panel_query_changed(&mut self, ui: &MainWindow, query: &str) {
+        self.key_panel_query = query.to_string();
+        self.visible_key_defs = search_key_defs(query);
+        self.sync_key_panel_to_ui(ui);
+    }
+
+    fn add_key_from_panel(&mut self, ui: &MainWindow, index: usize) {
+        let Some(def) = self.visible_key_defs.get(index).copied() else {
+            return;
+        };
+
+        let mut expert_map = self
+            .plist_service
+            .parse_extra_pairs(&self.editor_state.expert_entries)
+            .unwrap_or_default();
+
+        match def.key {
+            "Label" => {
+                if self.editor_state.label.trim().is_empty() {
+                    self.editor_state.label = "com.example.new-job".to_string();
+                }
+            }
+            "Program" => {
+                if self.editor_state.program.trim().is_empty() {
+                    self.editor_state.program = "/usr/bin/true".to_string();
+                }
+            }
+            "ProgramArguments" => {
+                if self.editor_state.program_arguments.trim().is_empty() {
+                    self.editor_state.program_arguments = if self.editor_state.program.is_empty() {
+                        "/usr/bin/true".to_string()
+                    } else {
+                        self.editor_state.program.clone()
+                    };
+                }
+            }
+            "RunAtLoad" => {
+                self.editor_state.run_at_load = true;
+            }
+            "KeepAlive" => {
+                self.editor_state.keep_alive = true;
+            }
+            "StartInterval" => {
+                if self.editor_state.start_interval.trim().is_empty() {
+                    self.editor_state.start_interval = "60".to_string();
+                }
+            }
+            "WorkingDirectory" => {
+                if self.editor_state.working_directory.trim().is_empty() {
+                    self.editor_state.working_directory = "/tmp".to_string();
+                }
+            }
+            "EnvironmentVariables" => {
+                if self.editor_state.environment_variables.trim().is_empty() {
+                    self.editor_state.environment_variables =
+                        "PATH=/usr/bin:/bin:/usr/sbin:/sbin".to_string();
+                }
+            }
+            other => {
+                expert_map
+                    .entry(other.to_string())
+                    .or_insert_with(|| "<value>".to_string());
+                self.editor_state.expert_entries =
+                    self.plist_service.format_extra_pairs(&expert_map);
+            }
+        }
+
+        self.sync_editor_to_ui(ui);
+        self.refresh_editor_preview(ui);
+        ui.set_status_message(format!("Added key template '{}'.", def.key).into());
+    }
+
     fn ai_prompt_changed(&mut self, ui: &MainWindow, value: &str) {
         self.editor_state.ai_prompt = value.to_string();
         ui.set_ai_prompt(self.editor_state.ai_prompt.clone().into());
@@ -759,6 +842,10 @@ impl AppController {
             .plist_service
             .parse_env_pairs(&self.editor_state.environment_variables)
             .map_err(|err| err.to_string())?;
+        let extra_string_keys = self
+            .plist_service
+            .parse_extra_pairs(&self.editor_state.expert_entries)
+            .map_err(|err| err.to_string())?;
 
         Ok(StandardPlistDocument {
             label: self.editor_state.label.trim().to_string(),
@@ -772,6 +859,7 @@ impl AppController {
             working_directory: (!self.editor_state.working_directory.trim().is_empty())
                 .then_some(self.editor_state.working_directory.trim().to_string()),
             environment_variables,
+            extra_string_keys,
         })
     }
 
@@ -812,6 +900,7 @@ impl AppController {
         ui.set_editor_working_directory(self.editor_state.working_directory.clone().into());
         ui.set_editor_start_interval(self.editor_state.start_interval.clone().into());
         ui.set_editor_env_vars(self.editor_state.environment_variables.clone().into());
+        ui.set_editor_expert_entries(self.editor_state.expert_entries.clone().into());
         ui.set_editor_run_at_load(self.editor_state.run_at_load);
         ui.set_editor_keep_alive(self.editor_state.keep_alive);
         ui.set_editor_xml_preview(self.editor_state.xml_preview.clone().into());
@@ -830,6 +919,17 @@ impl AppController {
             None => "No editor target selected".to_string(),
         };
         ui.set_editor_target_text(target_text.into());
+    }
+
+    fn sync_key_panel_to_ui(&self, ui: &MainWindow) {
+        let lines: Vec<SharedString> = self
+            .visible_key_defs
+            .iter()
+            .map(|def| format!("{} — {}", def.key, def.note).into())
+            .collect();
+        ui.set_key_panel_lines(ModelRc::new(VecModel::from(lines)));
+        ui.set_key_panel_query(self.key_panel_query.clone().into());
+        ui.set_key_panel_count_text(format!("{} keys", self.visible_key_defs.len()).into());
     }
 
     fn apply_filters_and_render(&mut self, ui: &MainWindow, preferred_job_id: Option<&str>) {
@@ -1421,6 +1521,44 @@ pub fn run() -> Result<(), slint::PlatformError> {
     {
         let ui_weak = ui.as_weak();
         let controller = controller.clone();
+        ui.on_editor_expert_entries_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .editor_expert_entries_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_key_panel_query_changed(move |query| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .key_panel_query_changed(&ui, query.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_key_panel_add_requested(move |index| {
+            if let Some(ui) = ui_weak.upgrade() {
+                if index >= 0 {
+                    controller
+                        .borrow_mut()
+                        .add_key_from_panel(&ui, index as usize);
+                }
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
         ui.on_ai_prompt_changed(move |value| {
             if let Some(ui) = ui_weak.upgrade() {
                 controller
@@ -1509,6 +1647,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
 
     controller.borrow().update_advanced_filter_controls(&ui);
     controller.borrow().sync_editor_to_ui(&ui);
+    controller.borrow().sync_key_panel_to_ui(&ui);
     ui.set_command_query("".into());
     ui.set_log_view_text("Select a job to inspect logs.".into());
     controller.borrow_mut().refresh(&ui);

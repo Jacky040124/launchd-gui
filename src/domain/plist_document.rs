@@ -25,6 +25,7 @@ pub struct StandardPlistDocument {
     pub start_interval: Option<u64>,
     pub working_directory: Option<String>,
     pub environment_variables: BTreeMap<String, String>,
+    pub extra_string_keys: BTreeMap<String, String>,
 }
 
 impl StandardPlistDocument {
@@ -193,6 +194,20 @@ pub fn search_key_defs(keyword: &str) -> Vec<&'static LaunchdKeyDef> {
                 || def.note.to_ascii_lowercase().contains(&normalized)
         })
         .collect()
+}
+
+pub fn is_standard_managed_key(key: &str) -> bool {
+    matches!(
+        key,
+        "Label"
+            | "Program"
+            | "ProgramArguments"
+            | "RunAtLoad"
+            | "KeepAlive"
+            | "StartInterval"
+            | "WorkingDirectory"
+            | "EnvironmentVariables"
+    )
 }
 
 #[cfg(test)]
