@@ -110,6 +110,8 @@ cargo run --bin quicklaunch_helper -- --list
 cargo run --bin quicklaunch_helper -- --summary
 ```
 
+QuickLaunch payload now includes group + starred + last-updated timestamp for real-time menu indicators.
+
 ### Run
 
 ```bash

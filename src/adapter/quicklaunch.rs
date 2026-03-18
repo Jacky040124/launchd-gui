@@ -13,6 +13,7 @@ pub struct QuickLaunchItem {
     pub status: String,
     pub group: String,
     pub is_starred: bool,
+    pub updated_at_unix_secs: u64,
 }
 
 pub trait QuickLaunchProvider: Send + Sync {
@@ -126,6 +127,7 @@ mod tests {
                 status: "loaded".to_string(),
                 group: "user-agent".to_string(),
                 is_starred: true,
+                updated_at_unix_secs: 123,
             }])
             .expect("sync to file");
 

@@ -26,8 +26,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let items = read_state(&state_path)?;
             for item in items {
                 println!(
-                    "{} | {} | {} | {}",
-                    item.group, item.status, item.title, item.id
+                    "{} | {} | {} | {} | updated:{}",
+                    item.group, item.status, item.title, item.id, item.updated_at_unix_secs
                 );
             }
         }
@@ -127,6 +127,7 @@ mod tests {
                 status: "loaded".to_string(),
                 group: "user-agent".to_string(),
                 is_starred: true,
+                updated_at_unix_secs: 1,
             },
             QuickLaunchItem {
                 id: "2".to_string(),
@@ -134,6 +135,7 @@ mod tests {
                 status: "running".to_string(),
                 group: "user-agent".to_string(),
                 is_starred: false,
+                updated_at_unix_secs: 2,
             },
             QuickLaunchItem {
                 id: "3".to_string(),
@@ -141,6 +143,7 @@ mod tests {
                 status: "loaded".to_string(),
                 group: "global-agent".to_string(),
                 is_starred: true,
+                updated_at_unix_secs: 3,
             },
         ];
         let grouped = summarize_groups(&items);

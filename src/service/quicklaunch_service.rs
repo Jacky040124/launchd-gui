@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::adapter::quicklaunch::{QuickLaunchItem, QuickLaunchProvider};
 use crate::domain::job::JobSummary;
@@ -76,12 +77,20 @@ impl QuickLaunchService {
                 status: job.status_text().to_string(),
                 group: self.config.group_by.group_for_job(job),
                 is_starred: job.is_starred,
+                updated_at_unix_secs: current_unix_secs(),
             })
             .collect::<Vec<_>>();
 
         self.provider.sync_items(&items)?;
         Ok(items.len())
     }
+}
+
+fn current_unix_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
