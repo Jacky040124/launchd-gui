@@ -17,6 +17,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 slint = { version = "1", default-features = false, features = ["std", "backend-winit", "renderer-skia", "compat-1-2"] }
+tray-icon = "0.21.3"
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 slint = { version = "1", default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2"] }

@@ -128,6 +128,9 @@ Slint provides a minimal desktop UI:
   - supports `--list` and `--summary` for external menu integrations
   - supports `--enqueue-action` / `--enqueue-group-action` / `--enqueue-starred-action`
     and `--drain-actions` for remote control queue
+- `src/bin/quicklaunch_menubar.rs` (macOS only)
+  - native tray/menu-bar shell for QuickLaunch controls
+  - reads summary via helper bridge and enqueues starred/group actions
 
 ## Safety Boundaries
 

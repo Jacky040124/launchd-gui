@@ -267,3 +267,23 @@ Expected:
 - Bridge helper receives synced JSON payload.
 - `--list` and `--summary` return non-empty output when jobs are available.
 - Queued helper actions are drained and executed by LaunchPad on refresh.
+
+## P. Native QuickLaunch Menu Bar (macOS)
+
+1. Ensure helper env is set:
+   ```bash
+   export LAUNCHPAD_QUICKLAUNCH_HELPER=/path/to/quicklaunch_helper
+   ```
+2. Start main app and refresh once so QuickLaunch snapshot exists.
+3. In another terminal, run:
+   ```bash
+   cargo run --bin quicklaunch_menubar
+   ```
+4. In menu bar app:
+   - click **Refresh Summary** and verify summary text updates
+   - click **Starred > Start Starred** (or any group action)
+5. Back in LaunchPad main window click **Refresh**.
+
+Expected:
+- Menu bar helper can enqueue actions without opening LaunchPad window controls.
+- LaunchPad refresh drains and executes queued actions.

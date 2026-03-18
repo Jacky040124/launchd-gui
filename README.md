@@ -125,6 +125,14 @@ cargo run --bin quicklaunch_helper -- --drain-actions
 
 When QuickLaunch sync is enabled, LaunchPad drains queued actions on refresh and executes them through the same action service used by the main UI.
 
+For macOS native menu-bar control, the repository also includes:
+
+```bash
+cargo run --bin quicklaunch_menubar
+```
+
+`quicklaunch_menubar` reads summary from `quicklaunch_helper` and can enqueue starred/group batch actions directly from the menu bar.
+
 ### Run
 
 ```bash
