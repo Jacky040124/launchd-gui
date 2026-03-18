@@ -18,6 +18,7 @@ use launchpad::domain::plist_document::StandardPlistDocument;
 use launchpad::domain::status::JobStatus;
 use launchpad::service::action_service::ActionService;
 use launchpad::service::delete_service::DeleteService;
+use launchpad::service::diagnostic_service::DiagnosticService;
 use launchpad::service::job_service::JobService;
 use launchpad::service::plist_service::PlistService;
 use launchpad::service::star_service::StarService;
@@ -79,6 +80,7 @@ struct EditorState {
     working_directory: String,
     environment_variables: String,
     xml_preview: String,
+    diagnostics_text: String,
 }
 
 impl EditorState {
@@ -96,6 +98,7 @@ impl EditorState {
             working_directory: document.working_directory.clone().unwrap_or_default(),
             environment_variables: plist_service.format_env_pairs(&document.environment_variables),
             xml_preview: String::new(),
+            diagnostics_text: String::new(),
         }
     }
 }
@@ -104,6 +107,7 @@ struct AppController {
     job_service: JobService,
     action_service: ActionService,
     delete_service: DeleteService,
+    diagnostic_service: DiagnosticService,
     plist_service: PlistService,
     star_service: StarService,
     clipboard: Arc<dyn ClipboardClient>,
@@ -139,6 +143,7 @@ impl AppController {
             ),
             action_service: ActionService::new(launchctl.clone(), uid),
             delete_service: DeleteService::new(launchctl, fs_ops, uid),
+            diagnostic_service: DiagnosticService,
             plist_service: PlistService::new(Arc::new(SystemPlistDocumentStore)),
             star_service,
             clipboard,
@@ -641,16 +646,29 @@ impl AppController {
             Ok(document) => match self.plist_service.xml_preview(&document) {
                 Ok(xml) => {
                     self.editor_state.xml_preview = xml;
+                    let diagnostics = self.diagnostic_service.analyze(&document);
+                    if diagnostics.is_empty() {
+                        self.editor_state.diagnostics_text = "未发现问题。".to_string();
+                    } else {
+                        self.editor_state.diagnostics_text = diagnostics
+                            .iter()
+                            .map(|item| item.to_line())
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                    }
                 }
                 Err(err) => {
                     self.editor_state.xml_preview = format!("XML preview unavailable: {err}");
+                    self.editor_state.diagnostics_text = format!("诊断暂不可用: {err}");
                 }
             },
             Err(err) => {
                 self.editor_state.xml_preview = format!("XML preview unavailable: {err}");
+                self.editor_state.diagnostics_text = format!("诊断暂不可用: {err}");
             }
         }
         ui.set_editor_xml_preview(self.editor_state.xml_preview.clone().into());
+        ui.set_editor_diagnostics_text(self.editor_state.diagnostics_text.clone().into());
     }
 
     fn sync_editor_to_ui(&self, ui: &MainWindow) {
@@ -663,6 +681,7 @@ impl AppController {
         ui.set_editor_run_at_load(self.editor_state.run_at_load);
         ui.set_editor_keep_alive(self.editor_state.keep_alive);
         ui.set_editor_xml_preview(self.editor_state.xml_preview.clone().into());
+        ui.set_editor_diagnostics_text(self.editor_state.diagnostics_text.clone().into());
         let target_text = match &self.editor_target {
             Some(EditorTarget::Existing { index }) => self
                 .jobs

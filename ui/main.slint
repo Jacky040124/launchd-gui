@@ -41,6 +41,7 @@ export component MainWindow inherits Window {
     in-out property <bool> editor_run_at_load: false;
     in-out property <bool> editor_keep_alive: false;
     in-out property <string> editor_xml_preview: "";
+    in-out property <string> editor_diagnostics_text: "";
 
     callback refresh_requested();
     callback select_job(int);
@@ -470,6 +471,26 @@ export component MainWindow inherits Window {
                             text: root.editor_xml_preview;
                             wrap: word-wrap;
                             color: #344054;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    border-width: 1px;
+                    border-color: #fec84b;
+                    border-radius: 8px;
+                    background: #fffaeb;
+                    VerticalBox {
+                        padding: 8px;
+                        Text {
+                            text: "Diagnostics";
+                            color: #7a2e0e;
+                            font-weight: 600;
+                        }
+                        Text {
+                            text: root.editor_diagnostics_text;
+                            wrap: word-wrap;
+                            color: #7a2e0e;
                         }
                     }
                 }
