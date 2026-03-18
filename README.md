@@ -110,6 +110,7 @@ The repository now includes `quicklaunch_helper` binary for bridge mode:
 ```bash
 cargo run --bin quicklaunch_helper -- --sync-json   # reads JSON from stdin
 cargo run --bin quicklaunch_helper -- --list
+cargo run --bin quicklaunch_helper -- --list-json
 cargo run --bin quicklaunch_helper -- --summary
 ```
 
@@ -131,7 +132,7 @@ For macOS native menu-bar control, the repository also includes:
 cargo run --bin quicklaunch_menubar
 ```
 
-`quicklaunch_menubar` reads summary from `quicklaunch_helper` and can enqueue starred/group batch actions directly from the menu bar.
+`quicklaunch_menubar` reads summary from `quicklaunch_helper` and can execute starred/group batch actions directly from the menu bar via `launchctl`.
 
 ### Run
 

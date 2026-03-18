@@ -36,6 +36,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
         }
+        "--list-json" => {
+            let items = read_state(&state_path)?;
+            println!("{}", serde_json::to_string(&items)?);
+        }
         "--summary" => {
             let items = read_state(&state_path)?;
             let grouped = summarize_groups(&items);
@@ -70,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ => {
             eprintln!(
-                "Usage:\n  quicklaunch_helper --sync-json\n  quicklaunch_helper --list\n  quicklaunch_helper --summary\n  quicklaunch_helper --enqueue-action <action> <id1,id2,...>\n  quicklaunch_helper --enqueue-group-action <group> <action>\n  quicklaunch_helper --enqueue-starred-action <action>\n  quicklaunch_helper --drain-actions"
+                "Usage:\n  quicklaunch_helper --sync-json\n  quicklaunch_helper --list\n  quicklaunch_helper --list-json\n  quicklaunch_helper --summary\n  quicklaunch_helper --enqueue-action <action> <id1,id2,...>\n  quicklaunch_helper --enqueue-group-action <group> <action>\n  quicklaunch_helper --enqueue-starred-action <action>\n  quicklaunch_helper --drain-actions"
             );
             std::process::exit(2);
         }

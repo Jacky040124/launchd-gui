@@ -125,12 +125,12 @@ Slint provides a minimal desktop UI:
 
 - `src/bin/quicklaunch_helper.rs`
   - bridge helper that accepts `--sync-json` payloads
-  - supports `--list` and `--summary` for external menu integrations
+  - supports `--list` / `--list-json` and `--summary` for external menu integrations
   - supports `--enqueue-action` / `--enqueue-group-action` / `--enqueue-starred-action`
     and `--drain-actions` for remote control queue
 - `src/bin/quicklaunch_menubar.rs` (macOS only)
   - native tray/menu-bar shell for QuickLaunch controls
-  - reads summary via helper bridge and enqueues starred/group actions
+  - reads summary + item snapshot via helper bridge and executes starred/group actions directly
 
 ## Safety Boundaries
 

@@ -3,6 +3,10 @@ mod macos {
     use std::process::Command;
     use std::time::{Duration, Instant};
 
+    use launchpad::adapter::launchctl::current_uid;
+    use launchpad::adapter::quicklaunch::QuickLaunchItem;
+    use launchpad::domain::action::TriggerAction;
+    use launchpad::domain::job::JobScope;
     use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
     use tray_icon::{Icon, TrayIconBuilder};
 
@@ -57,6 +61,7 @@ mod macos {
         let mut last_summary_update = Instant::now()
             .checked_sub(SUMMARY_REFRESH_INTERVAL)
             .unwrap_or_else(Instant::now);
+        let uid = current_uid();
 
         loop {
             if last_summary_update.elapsed() >= SUMMARY_REFRESH_INTERVAL {
@@ -82,33 +87,33 @@ mod macos {
                         continue;
                     }
 
-                    let queued = if event.id == starred_start.id() {
-                        enqueue_starred_action(helper.as_str(), "start")
+                    let executed = if event.id == starred_start.id() {
+                        execute_starred_action(helper.as_str(), "start", uid)
                     } else if event.id == starred_stop.id() {
-                        enqueue_starred_action(helper.as_str(), "stop")
+                        execute_starred_action(helper.as_str(), "stop", uid)
                     } else if event.id == starred_enable.id() {
-                        enqueue_starred_action(helper.as_str(), "enable")
+                        execute_starred_action(helper.as_str(), "enable", uid)
                     } else if event.id == starred_disable.id() {
-                        enqueue_starred_action(helper.as_str(), "disable")
+                        execute_starred_action(helper.as_str(), "disable", uid)
                     } else if event.id == user_start.id() {
-                        enqueue_group_action(helper.as_str(), "user-agent", "start")
+                        execute_group_action(helper.as_str(), "user-agent", "start", uid)
                     } else if event.id == user_stop.id() {
-                        enqueue_group_action(helper.as_str(), "user-agent", "stop")
+                        execute_group_action(helper.as_str(), "user-agent", "stop", uid)
                     } else if event.id == global_start.id() {
-                        enqueue_group_action(helper.as_str(), "global-agent", "start")
+                        execute_group_action(helper.as_str(), "global-agent", "start", uid)
                     } else if event.id == global_stop.id() {
-                        enqueue_group_action(helper.as_str(), "global-agent", "stop")
+                        execute_group_action(helper.as_str(), "global-agent", "stop", uid)
                     } else {
                         Ok("No action".to_string())
                     };
 
-                    match queued {
+                    match executed {
                         Ok(message) => {
                             status_item.set_text(message.clone());
                             let _ = tray.set_tooltip(Some(message));
                         }
                         Err(err) => {
-                            let msg = format!("Action queue failed: {err}");
+                            let msg = format!("Action execution failed: {err}");
                             status_item.set_text(msg.clone());
                             let _ = tray.set_tooltip(Some(msg));
                         }
@@ -155,37 +160,120 @@ mod macos {
         }
     }
 
-    fn enqueue_starred_action(
-        helper: &str,
-        action: &str,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let output = Command::new(helper)
-            .args(["--enqueue-starred-action", action])
-            .output()?;
-        if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-        } else {
-            Err(format!(
-                "enqueue starred action failed: {}",
+    fn fetch_items(helper: &str) -> Result<Vec<QuickLaunchItem>, Box<dyn std::error::Error>> {
+        let output = Command::new(helper).arg("--list-json").output()?;
+        if !output.status.success() {
+            return Err(format!(
+                "helper list-json failed: {}",
                 String::from_utf8_lossy(&output.stderr).trim()
             )
-            .into())
+            .into());
         }
+        let raw = String::from_utf8_lossy(&output.stdout);
+        if raw.trim().is_empty() {
+            return Ok(Vec::new());
+        }
+        Ok(serde_json::from_str(&raw)?)
     }
 
-    fn enqueue_group_action(
+    fn execute_starred_action(
+        helper: &str,
+        action: &str,
+        uid: u32,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let items = fetch_items(helper)?;
+        execute_action_for_items(items.iter().filter(|item| item.is_starred), action, uid)
+    }
+
+    fn execute_group_action(
         helper: &str,
         group: &str,
         action: &str,
+        uid: u32,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let output = Command::new(helper)
-            .args(["--enqueue-group-action", group, action])
-            .output()?;
+        let items = fetch_items(helper)?;
+        execute_action_for_items(items.iter().filter(|item| item.group == group), action, uid)
+    }
+
+    fn execute_action_for_items<'a>(
+        items: impl Iterator<Item = &'a QuickLaunchItem>,
+        action: &str,
+        uid: u32,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let trigger = TriggerAction::from_ui_value(action)
+            .ok_or_else(|| format!("unsupported action: {action}"))?;
+        let mut matched = 0usize;
+        let mut success = 0usize;
+        let mut failed = 0usize;
+        let mut skipped = 0usize;
+
+        for item in items {
+            matched += 1;
+            let Some((scope, label)) = parse_scope_and_label(item.title.as_str()) else {
+                skipped += 1;
+                continue;
+            };
+            match execute_launchctl_action(&scope, &label, trigger, uid) {
+                Ok(_) => success += 1,
+                Err(_) => failed += 1,
+            }
+        }
+
+        if matched == 0 {
+            Ok(format!(
+                "No matching QuickLaunch items for action '{action}'"
+            ))
+        } else {
+            Ok(format!(
+                "Executed {action}: {success} success, {failed} failed, {skipped} skipped"
+            ))
+        }
+    }
+
+    fn parse_scope_and_label(title: &str) -> Option<(JobScope, String)> {
+        let trimmed = title.trim();
+        let bracket_start = trimmed.find('[')?;
+        let bracket_end = trimmed.find(']')?;
+        if bracket_end <= bracket_start + 1 {
+            return None;
+        }
+        let scope_raw = &trimmed[bracket_start + 1..bracket_end];
+        let label = trimmed.get(bracket_end + 1..)?.trim();
+        if label.is_empty() {
+            return None;
+        }
+        let scope = match scope_raw {
+            "user-agent" => JobScope::UserAgent,
+            "global-agent" => JobScope::GlobalAgent,
+            "system-daemon" => JobScope::SystemDaemon,
+            _ => return None,
+        };
+        Some((scope, label.to_string()))
+    }
+
+    fn execute_launchctl_action(
+        scope: &JobScope,
+        label: &str,
+        action: TriggerAction,
+        uid: u32,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let target = scope.target_for_label(uid, label);
+        let args: Vec<&str> = match action {
+            TriggerAction::Start => vec!["start", target.as_str()],
+            TriggerAction::Stop => vec!["stop", target.as_str()],
+            TriggerAction::Kickstart => vec!["kickstart", target.as_str()],
+            TriggerAction::Enable => vec!["enable", target.as_str()],
+            TriggerAction::Disable => vec!["disable", target.as_str()],
+            TriggerAction::Load | TriggerAction::Unload => {
+                return Err("load/unload are not supported in menubar direct mode".into());
+            }
+        };
+        let output = Command::new("launchctl").args(args).output()?;
         if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+            Ok(())
         } else {
             Err(format!(
-                "enqueue group action failed: {}",
+                "launchctl failed: {}",
                 String::from_utf8_lossy(&output.stderr).trim()
             )
             .into())

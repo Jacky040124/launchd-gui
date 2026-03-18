@@ -282,8 +282,12 @@ Expected:
 4. In menu bar app:
    - click **Refresh Summary** and verify summary text updates
    - click **Starred > Start Starred** (or any group action)
-5. Back in LaunchPad main window click **Refresh**.
+5. Verify target services change state (no need to click main window action buttons).
+6. (Optional) if using queue mode for debugging, inspect helper queue:
+   ```bash
+   /path/to/quicklaunch_helper --drain-actions
+   ```
 
 Expected:
-- Menu bar helper can enqueue actions without opening LaunchPad window controls.
-- LaunchPad refresh drains and executes queued actions.
+- Menu bar helper can execute batch actions without opening LaunchPad window controls.
+- Summary refresh reflects current helper snapshot state.
