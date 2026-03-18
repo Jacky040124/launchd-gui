@@ -39,7 +39,10 @@ LaunchPad currently includes these core capabilities:
    - edit common keys: `Label`, `Program`, `ProgramArguments`, `RunAtLoad`, `KeepAlive`,
      `StartInterval`, `WorkingDirectory`, `EnvironmentVariables`
    - real-time XML preview while editing
+   - real-time diagnostics with issue descriptions and fix suggestions
    - create new user/global plist from the app
+9. **Built-in log viewer (selected job)**:
+   - fetch recent logs by selected label (no need to open Console.app)
 
 ## Tech Stack
 
@@ -114,8 +117,8 @@ LaunchPad uses a layered performance approach:
 ## Next Roadmap
 
 - Add expert plist editor with arbitrary key injection panel (36+ documented keys).
-- Add richer status diagnostics (last exit hints, disabled reason visibility).
-- Add optional log preview panel for selected jobs.
+- Add richer runtime diagnostics (launchctl print + log evidence cross-linking).
+- Add streaming log mode (pause/resume/follow).
 - Add AI-native workflow for natural-language create/edit with reviewable diffs.
 - Expand macOS-only integration tests for real `launchctl` workflows.
 

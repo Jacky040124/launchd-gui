@@ -7,6 +7,7 @@ use launchpad::adapter::clipboard::{ClipboardClient, SystemClipboardClient};
 use launchpad::adapter::fs_ops::SystemFsOps;
 use launchpad::adapter::fs_scan::FileScanner;
 use launchpad::adapter::launchctl::{current_uid, SystemLaunchctlClient};
+use launchpad::adapter::log_stream::SystemLogStreamClient;
 use launchpad::adapter::plist_doc::SystemPlistDocumentStore;
 use launchpad::adapter::plist_reader::SystemPlistReader;
 use launchpad::adapter::star_store::JsonStarStore;
@@ -20,6 +21,7 @@ use launchpad::service::action_service::ActionService;
 use launchpad::service::delete_service::DeleteService;
 use launchpad::service::diagnostic_service::DiagnosticService;
 use launchpad::service::job_service::JobService;
+use launchpad::service::log_service::LogService;
 use launchpad::service::plist_service::PlistService;
 use launchpad::service::star_service::StarService;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
@@ -108,6 +110,7 @@ struct AppController {
     action_service: ActionService,
     delete_service: DeleteService,
     diagnostic_service: DiagnosticService,
+    log_service: LogService,
     plist_service: PlistService,
     star_service: StarService,
     clipboard: Arc<dyn ClipboardClient>,
@@ -119,6 +122,7 @@ struct AppController {
     advanced_filter: AdvancedFilter,
     starred_only: bool,
     advanced_details_visible: bool,
+    recent_logs_text: String,
     editor_state: EditorState,
     editor_target: Option<EditorTarget>,
     ui_state: UiState,
@@ -144,6 +148,7 @@ impl AppController {
             action_service: ActionService::new(launchctl.clone(), uid),
             delete_service: DeleteService::new(launchctl, fs_ops, uid),
             diagnostic_service: DiagnosticService,
+            log_service: LogService::new(Arc::new(SystemLogStreamClient)),
             plist_service: PlistService::new(Arc::new(SystemPlistDocumentStore)),
             star_service,
             clipboard,
@@ -155,6 +160,7 @@ impl AppController {
             advanced_filter: AdvancedFilter::default(),
             starred_only: false,
             advanced_details_visible: false,
+            recent_logs_text: String::new(),
             editor_state: EditorState::default(),
             editor_target: None,
             ui_state: UiState::default(),
@@ -185,6 +191,8 @@ impl AppController {
                     self.editor_target = None;
                     self.editor_state = EditorState::default();
                     self.sync_editor_to_ui(ui);
+                    self.recent_logs_text.clear();
+                    ui.set_log_view_text("".into());
                     self.update_filter_badge(ui);
                     ui.set_job_lines(ModelRc::new(VecModel::from(Vec::<SharedString>::new())));
                     ui.set_selected_job_row(-1);
@@ -225,6 +233,8 @@ impl AppController {
                 self.editor_target = None;
                 self.editor_state = EditorState::default();
                 self.sync_editor_to_ui(ui);
+                self.recent_logs_text.clear();
+                ui.set_log_view_text("".into());
                 self.update_filter_badge(ui);
                 ui.set_job_lines(ModelRc::new(VecModel::from(Vec::<SharedString>::new())));
                 ui.set_selected_job_row(-1);
@@ -588,6 +598,35 @@ impl AppController {
         ui.set_advanced_detail_visible(self.advanced_details_visible);
     }
 
+    fn load_recent_logs(&mut self, ui: &MainWindow) {
+        let Some(index) = self.ui_state.selected_index else {
+            ui.set_status_message("Select a job first.".into());
+            return;
+        };
+        if index >= self.jobs.len() {
+            ui.set_status_message("Selected job is no longer available.".into());
+            return;
+        }
+
+        let label = self.jobs[index].label.clone();
+        match self.log_service.recent_logs(&label, 10, 120) {
+            Ok(logs) => {
+                self.recent_logs_text = if logs.trim().is_empty() {
+                    "No recent logs found.".to_string()
+                } else {
+                    logs
+                };
+                ui.set_log_view_text(self.recent_logs_text.clone().into());
+                ui.set_status_message("Loaded recent logs.".into());
+            }
+            Err(err) => {
+                self.recent_logs_text = format!("Failed to load logs: {err}");
+                ui.set_log_view_text(self.recent_logs_text.clone().into());
+                ui.set_status_message(format!("Log load failed: {err}").into());
+            }
+        }
+    }
+
     fn load_editor_for_existing_job(&mut self, ui: &MainWindow, index: usize) {
         if index >= self.jobs.len() {
             return;
@@ -597,12 +636,16 @@ impl AppController {
         match self.plist_service.load_document(&job.path) {
             Ok(document) => {
                 self.editor_state = EditorState::from_document(&document, &self.plist_service);
+                self.recent_logs_text = "Click 'Refresh Logs' to load runtime logs.".to_string();
+                ui.set_log_view_text(self.recent_logs_text.clone().into());
                 self.refresh_editor_preview(ui);
                 self.sync_editor_to_ui(ui);
             }
             Err(err) => {
                 self.editor_state = EditorState::default();
                 self.sync_editor_to_ui(ui);
+                self.recent_logs_text = "Log view unavailable: plist load failed.".to_string();
+                ui.set_log_view_text(self.recent_logs_text.clone().into());
                 ui.set_status_message(format!("Failed to load plist editor: {err}").into());
             }
         }
@@ -726,6 +769,8 @@ impl AppController {
             self.editor_target = None;
             self.editor_state = EditorState::default();
             self.sync_editor_to_ui(ui);
+            self.recent_logs_text.clear();
+            ui.set_log_view_text("".into());
             ui.set_selected_job_row(-1);
             self.update_selection_details(ui);
             return;
@@ -1291,6 +1336,16 @@ pub fn run() -> Result<(), slint::PlatformError> {
     {
         let ui_weak = ui.as_weak();
         let controller = controller.clone();
+        ui.on_refresh_logs_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().load_recent_logs(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
         ui.on_new_job_requested(move |scope| {
             if let Some(ui) = ui_weak.upgrade() {
                 let parsed_scope = match scope.as_str() {
@@ -1317,6 +1372,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
 
     controller.borrow().update_advanced_filter_controls(&ui);
     controller.borrow().sync_editor_to_ui(&ui);
+    ui.set_log_view_text("Select a job to inspect logs.".into());
     controller.borrow_mut().refresh(&ui);
     ui.run()
 }

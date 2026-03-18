@@ -42,6 +42,7 @@ export component MainWindow inherits Window {
     in-out property <bool> editor_keep_alive: false;
     in-out property <string> editor_xml_preview: "";
     in-out property <string> editor_diagnostics_text: "";
+    in-out property <string> log_view_text: "";
 
     callback refresh_requested();
     callback select_job(int);
@@ -71,6 +72,7 @@ export component MainWindow inherits Window {
     callback toggle_editor_keep_alive();
     callback save_editor_requested();
     callback new_job_requested(string);
+    callback refresh_logs_requested();
 
     title: "LaunchPad";
     width: 1120px;
@@ -491,6 +493,35 @@ export component MainWindow inherits Window {
                             text: root.editor_diagnostics_text;
                             wrap: word-wrap;
                             color: #7a2e0e;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    border-width: 1px;
+                    border-color: #d0d5dd;
+                    border-radius: 8px;
+                    background: #f8f9fc;
+                    VerticalBox {
+                        padding: 8px;
+                        spacing: 6px;
+                        HorizontalBox {
+                            spacing: 8px;
+                            Text {
+                                text: "Logs";
+                                color: #1d2939;
+                                font-weight: 600;
+                            }
+                            Button {
+                                text: "Refresh Logs";
+                                enabled: !root.busy;
+                                clicked => { root.refresh_logs_requested(); }
+                            }
+                        }
+                        Text {
+                            text: root.log_view_text;
+                            wrap: word-wrap;
+                            color: #344054;
                         }
                     }
                 }

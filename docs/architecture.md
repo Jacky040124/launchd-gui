@@ -32,6 +32,8 @@ This layer contains no process execution and is suitable for deterministic tests
 - `plist_doc.rs`
   - loads/saves standard plist editor model
   - serializes XML preview
+- `log_stream.rs`
+  - wraps `log show` for selected-label recent logs (macOS)
 - `launchctl.rs`
   - wraps `launchctl` command invocations and error normalization
   - parses `launchctl list` bulk status output
@@ -59,13 +61,17 @@ Adapters are trait-based, so tests can inject mock behavior.
     2. `bootout`
     3. delete plist
 - `star_service.rs`
- - `plist_service.rs`
-   - standard editor load/save orchestration
-   - new plist creation in allowed scope directories
-   - XML preview and input parsing helpers
   - loads persisted stars
   - toggles star/unstar and saves state
   - applies star state to job list models
+- `plist_service.rs`
+  - standard editor load/save orchestration
+  - new plist creation in allowed scope directories
+  - XML preview and input parsing helpers
+- `diagnostic_service.rs`
+  - static rule analysis for plist validity and safety hints
+- `log_service.rs`
+  - recent-log query orchestration for selected jobs
 
 ## UI Layer (`ui/main.slint` + `src/main.rs`)
 
@@ -76,7 +82,9 @@ Slint provides a minimal desktop UI:
 - star/unstar + starred-only filter
 - advanced attribute filters (status/disabled/run-at-load/keep-alive/has-error)
 - embedded plist editor with real-time XML preview
+- real-time diagnostics panel for editor changes
 - new user/global plist creation flow
+- built-in recent log viewer for selected job
 - copy details action
 - action buttons
 - status message area

@@ -159,3 +159,15 @@ Expected:
 - Editor shows validation errors for invalid values (for example malformed env pairs).
 - Existing plist edits can be saved safely.
 - New plist creation succeeds in allowed directories and is visible after refresh.
+
+## K. Built-in Log Viewer
+
+1. Select a job with known recent output.
+2. In editor area, click **Refresh Logs**.
+3. Verify logs appear in the **Logs** panel.
+4. Switch to another job and click **Refresh Logs** again.
+
+Expected:
+- Logs update to the selected job context.
+- Empty results show a friendly message instead of crashing.
+- On unsupported environments, an explicit error is shown in status/log panel.
