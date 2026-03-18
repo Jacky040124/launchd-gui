@@ -123,6 +123,7 @@ export component MainWindow inherits Window {
                 text <=> root.command_query;
                 placeholder-text: "Command palette: refresh / enable / new user / save / logs";
                 edited(value) => { root.command_query_changed(value); }
+                accepted => { root.command_requested(); }
             }
             Button {
                 text: "Run Command";
@@ -145,6 +146,7 @@ export component MainWindow inherits Window {
                 text <=> root.query_text;
                 placeholder-text: "Search label or path";
                 edited(text) => { root.query_changed(text); }
+                accepted => { root.query_changed(root.query_text); }
             }
             Button {
                 text: root.show_starred_only ? "★ Starred only" : "☆ Starred only";
@@ -616,6 +618,7 @@ export component MainWindow inherits Window {
                                 text <=> root.ai_prompt;
                                 placeholder-text: "Ask AI to modify this launchd job...";
                                 edited(value) => { root.ai_prompt_changed(value); }
+                                accepted => { root.ai_request_requested(); }
                             }
                             Button {
                                 text: root.ai_provider_text;
