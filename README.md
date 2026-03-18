@@ -71,6 +71,19 @@ cargo test --all-targets
 - On Linux, tests validate parsing/flow/control logic through mocks.
 - System daemons are intentionally non-destructive (read-only capabilities).
 
+## Known Limitations
+
+- No create/edit wizard for plist jobs in current MVP.
+- UI currently focuses on list/detail/action flow and does not include menu bar integration.
+- `launchctl` output formats can vary across macOS versions; parser is resilient but not exhaustive.
+
+## Next Roadmap
+
+- Add optional plist editor for common fields (`Label`, `ProgramArguments`, schedule keys).
+- Add richer status diagnostics (last exit hints, disabled reason visibility).
+- Add optional log preview panel for selected jobs.
+- Expand macOS-only integration tests for real `launchctl` workflows.
+
 ## License
 
 MIT
