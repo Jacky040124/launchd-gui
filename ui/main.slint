@@ -48,6 +48,8 @@ export component MainWindow inherits Window {
     in-out property <string> ai_prompt: "";
     in-out property <string> ai_response: "";
     in-out property <string> ai_provider_text: "AI Provider: heuristic-local";
+    in-out property <string> ai_diff_preview: "";
+    in-out property <bool> ai_patch_ready: false;
     in-out property <string> key_panel_query: "";
     in-out property <string> key_panel_count_text: "";
     in-out property <[string]> key_panel_lines: [];
@@ -87,6 +89,8 @@ export component MainWindow inherits Window {
     callback ai_prompt_changed(string);
     callback ai_request_requested();
     callback ai_cycle_provider_requested();
+    callback ai_apply_patch_requested();
+    callback ai_confirm_patch_requested();
     callback key_panel_query_changed(string);
     callback key_panel_add_requested(int);
 
@@ -592,11 +596,26 @@ export component MainWindow inherits Window {
                                 enabled: !root.busy;
                                 clicked => { root.ai_request_requested(); }
                             }
+                            Button {
+                                text: "Apply AI Patch";
+                                enabled: root.ai_patch_ready && !root.busy;
+                                clicked => { root.ai_apply_patch_requested(); }
+                            }
+                            Button {
+                                text: "Confirm Apply";
+                                enabled: root.ai_patch_ready && !root.busy;
+                                clicked => { root.ai_confirm_patch_requested(); }
+                            }
                         }
                         Text {
                             text: root.ai_response;
                             wrap: word-wrap;
                             color: #175cd3;
+                        }
+                        Text {
+                            text: root.ai_diff_preview;
+                            wrap: word-wrap;
+                            color: #344054;
                         }
                     }
                 }

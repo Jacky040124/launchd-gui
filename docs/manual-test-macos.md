@@ -199,3 +199,16 @@ Expected:
 Expected:
 - Commands execute the same actions as direct buttons.
 - Unknown command returns a clear hint with supported examples.
+
+## M. AI Patch Preview + Confirm Apply
+
+1. Select一个可编辑任务。
+2. 在 AI prompt 输入：`enable run at load interval 300 and add logs`.
+3. 点击 **AI Analyze**，确认建议输出 + diff 预览出现。
+4. 点击 **Apply AI Patch**，然后点击 **Confirm Apply**。
+5. 验证编辑器字段已更新（例如 RunAtLoad、StartInterval、Expert keys 中日志路径）。
+6. 点击 **Save** 才真正写入 plist。
+
+Expected:
+- AI 改动先以 diff 预览展示，不会直接改文件。
+- 只有经过确认后才应用到编辑器，再由 Save 落盘。

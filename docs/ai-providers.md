@@ -41,5 +41,5 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
 
 ## 安全策略（当前阶段）
 
-- AI 仅生成建议文本，不会自动写回 plist。
-- 所有实际修改仍由用户点击 Save 执行。
+- AI 会先生成 **patch 预览 diff**，并要求用户点击 `Apply AI Patch` + `Confirm Apply` 才会写入编辑器状态。
+- AI 不会直接落盘到 plist 文件；所有磁盘写入仍需用户显式点击 Save。

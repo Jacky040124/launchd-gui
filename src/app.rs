@@ -88,6 +88,7 @@ struct EditorState {
     diagnostics_text: String,
     ai_prompt: String,
     ai_response: String,
+    ai_diff_preview: String,
 }
 
 impl EditorState {
@@ -109,6 +110,7 @@ impl EditorState {
             diagnostics_text: String::new(),
             ai_prompt: String::new(),
             ai_response: String::new(),
+            ai_diff_preview: String::new(),
         }
     }
 }
@@ -137,6 +139,8 @@ struct AppController {
     recent_logs_text: String,
     editor_state: EditorState,
     editor_target: Option<EditorTarget>,
+    pending_ai_patch_document: Option<StandardPlistDocument>,
+    ai_patch_confirmation_required: bool,
     ui_state: UiState,
 }
 
@@ -180,6 +184,8 @@ impl AppController {
             recent_logs_text: String::new(),
             editor_state: EditorState::default(),
             editor_target: None,
+            pending_ai_patch_document: None,
+            ai_patch_confirmation_required: false,
             ui_state: UiState::default(),
         }
     }
@@ -207,6 +213,8 @@ impl AppController {
                     self.visible_indices.clear();
                     self.editor_target = None;
                     self.editor_state = EditorState::default();
+                    self.pending_ai_patch_document = None;
+                    self.ai_patch_confirmation_required = false;
                     self.sync_editor_to_ui(ui);
                     self.recent_logs_text.clear();
                     ui.set_log_view_text("".into());
@@ -249,6 +257,8 @@ impl AppController {
                 self.ui_state.clear_selection();
                 self.editor_target = None;
                 self.editor_state = EditorState::default();
+                self.pending_ai_patch_document = None;
+                self.ai_patch_confirmation_required = false;
                 self.sync_editor_to_ui(ui);
                 self.recent_logs_text.clear();
                 ui.set_log_view_text("".into());
@@ -287,6 +297,8 @@ impl AppController {
             keep_alive: false,
             ..EditorState::default()
         };
+        self.pending_ai_patch_document = None;
+        self.ai_patch_confirmation_required = false;
         self.refresh_editor_preview(ui);
         self.sync_editor_to_ui(ui);
         ui.set_status_message(format!("Preparing new {scope_label} plist draft.").into());
@@ -692,14 +704,164 @@ impl AppController {
                 }
                 self.editor_state.ai_response = lines.join("\n");
                 ui.set_ai_response(self.editor_state.ai_response.clone().into());
+                self.preview_ai_patch(ui);
                 ui.set_status_message("AI suggestions updated.".into());
             }
             Err(err) => {
                 self.editor_state.ai_response = format!("AI request failed: {err}");
                 ui.set_ai_response(self.editor_state.ai_response.clone().into());
+                self.pending_ai_patch_document = None;
+                self.ai_patch_confirmation_required = false;
+                self.editor_state.ai_diff_preview.clear();
+                ui.set_ai_diff_preview("".into());
+                ui.set_ai_patch_ready(false);
                 ui.set_status_message(format!("AI request failed: {err}").into());
             }
         }
+    }
+
+    fn request_apply_ai_patch(&mut self, ui: &MainWindow) {
+        if self.pending_ai_patch_document.is_none() {
+            ui.set_status_message("No AI patch preview available.".into());
+            return;
+        }
+        self.ai_patch_confirmation_required = true;
+        ui.set_ai_patch_ready(true);
+        ui.set_status_message("AI patch ready. Click confirm to apply to editor.".into());
+    }
+
+    fn confirm_apply_ai_patch(&mut self, ui: &MainWindow) {
+        if !self.ai_patch_confirmation_required {
+            ui.set_status_message("No pending AI patch confirmation.".into());
+            return;
+        }
+        let Some(document) = self.pending_ai_patch_document.clone() else {
+            ui.set_status_message("No AI patch data available.".into());
+            return;
+        };
+
+        self.editor_state = EditorState::from_document(&document, &self.plist_service);
+        self.pending_ai_patch_document = None;
+        self.ai_patch_confirmation_required = false;
+        self.editor_state.ai_diff_preview.clear();
+        self.refresh_editor_preview(ui);
+        self.sync_editor_to_ui(ui);
+        ui.set_ai_patch_ready(false);
+        ui.set_ai_diff_preview("".into());
+        ui.set_status_message(
+            "AI patch applied to editor. Review and click Save when ready.".into(),
+        );
+    }
+
+    fn preview_ai_patch(&mut self, ui: &MainWindow) {
+        let current_document = match self.editor_document_from_state() {
+            Ok(document) => document,
+            Err(_) => {
+                self.pending_ai_patch_document = None;
+                self.ai_patch_confirmation_required = false;
+                self.editor_state.ai_diff_preview =
+                    "Cannot build AI patch preview: current editor state is invalid.".to_string();
+                ui.set_ai_diff_preview(self.editor_state.ai_diff_preview.clone().into());
+                ui.set_ai_patch_ready(false);
+                return;
+            }
+        };
+
+        let Some(candidate) = self.ai_patch_candidate_from_prompt(&current_document) else {
+            self.pending_ai_patch_document = None;
+            self.ai_patch_confirmation_required = false;
+            self.editor_state.ai_diff_preview =
+                "No deterministic patch could be inferred from prompt.".to_string();
+            ui.set_ai_diff_preview(self.editor_state.ai_diff_preview.clone().into());
+            ui.set_ai_patch_ready(false);
+            return;
+        };
+
+        if candidate == current_document {
+            self.pending_ai_patch_document = None;
+            self.ai_patch_confirmation_required = false;
+            self.editor_state.ai_diff_preview =
+                "AI patch preview detected no effective changes.".to_string();
+            ui.set_ai_diff_preview(self.editor_state.ai_diff_preview.clone().into());
+            ui.set_ai_patch_ready(false);
+            return;
+        }
+
+        let before_xml = self
+            .plist_service
+            .xml_preview(&current_document)
+            .unwrap_or_default();
+        let after_xml = self
+            .plist_service
+            .xml_preview(&candidate)
+            .unwrap_or_default();
+        self.editor_state.ai_diff_preview = build_line_diff(&before_xml, &after_xml);
+        self.pending_ai_patch_document = Some(candidate);
+        self.ai_patch_confirmation_required = false;
+        ui.set_ai_diff_preview(self.editor_state.ai_diff_preview.clone().into());
+        ui.set_ai_patch_ready(true);
+    }
+
+    fn ai_patch_candidate_from_prompt(
+        &self,
+        current_document: &StandardPlistDocument,
+    ) -> Option<StandardPlistDocument> {
+        let normalized = self.editor_state.ai_prompt.to_ascii_lowercase();
+        let mut candidate = current_document.clone();
+        let mut changed = false;
+
+        if (normalized.contains("run at load") || normalized.contains("开机"))
+            && !candidate.run_at_load
+        {
+            candidate.run_at_load = true;
+            changed = true;
+        }
+
+        if (normalized.contains("keep alive") || normalized.contains("常驻"))
+            && !candidate.keep_alive
+        {
+            candidate.keep_alive = true;
+            changed = true;
+        }
+
+        if normalized.contains("disable keep alive")
+            || normalized.contains("keepalive off")
+            || normalized.contains("关闭常驻") && candidate.keep_alive
+        {
+            candidate.keep_alive = false;
+            changed = true;
+        }
+
+        if normalized.contains("interval") || normalized.contains("定时") {
+            if let Some(interval) = first_u64_in_text(&normalized) {
+                if candidate.start_interval != Some(interval) {
+                    candidate.start_interval = Some(interval);
+                    changed = true;
+                }
+            }
+        }
+
+        if normalized.contains("log") || normalized.contains("日志") {
+            if !candidate.extra_string_keys.contains_key("StandardOutPath") {
+                candidate.extra_string_keys.insert(
+                    "StandardOutPath".to_string(),
+                    "/tmp/launchpad.out.log".to_string(),
+                );
+                changed = true;
+            }
+            if !candidate
+                .extra_string_keys
+                .contains_key("StandardErrorPath")
+            {
+                candidate.extra_string_keys.insert(
+                    "StandardErrorPath".to_string(),
+                    "/tmp/launchpad.err.log".to_string(),
+                );
+                changed = true;
+            }
+        }
+
+        changed.then_some(candidate)
     }
 
     fn toggle_editor_run_at_load(&mut self, ui: &MainWindow) {
@@ -818,6 +980,8 @@ impl AppController {
         match self.plist_service.load_document(&job.path) {
             Ok(document) => {
                 self.editor_state = EditorState::from_document(&document, &self.plist_service);
+                self.pending_ai_patch_document = None;
+                self.ai_patch_confirmation_required = false;
                 self.recent_logs_text = "Click 'Refresh Logs' to load runtime logs.".to_string();
                 ui.set_log_view_text(self.recent_logs_text.clone().into());
                 self.refresh_editor_preview(ui);
@@ -825,6 +989,8 @@ impl AppController {
             }
             Err(err) => {
                 self.editor_state = EditorState::default();
+                self.pending_ai_patch_document = None;
+                self.ai_patch_confirmation_required = false;
                 self.sync_editor_to_ui(ui);
                 self.recent_logs_text = "Log view unavailable: plist load failed.".to_string();
                 ui.set_log_view_text(self.recent_logs_text.clone().into());
@@ -915,6 +1081,8 @@ impl AppController {
         ui.set_editor_diagnostics_text(self.editor_state.diagnostics_text.clone().into());
         ui.set_ai_prompt(self.editor_state.ai_prompt.clone().into());
         ui.set_ai_response(self.editor_state.ai_response.clone().into());
+        ui.set_ai_diff_preview(self.editor_state.ai_diff_preview.clone().into());
+        ui.set_ai_patch_ready(self.pending_ai_patch_document.is_some());
         ui.set_ai_provider_text(
             format!("AI Provider: {}", self.ai_service.active_provider_name()).into(),
         );
@@ -972,6 +1140,8 @@ impl AppController {
             self.ui_state.clear_selection();
             self.editor_target = None;
             self.editor_state = EditorState::default();
+            self.pending_ai_patch_document = None;
+            self.ai_patch_confirmation_required = false;
             self.sync_editor_to_ui(ui);
             self.recent_logs_text.clear();
             ui.set_log_view_text("".into());
@@ -1235,6 +1405,41 @@ fn bool_to_badge(value: bool) -> &'static str {
         "yes"
     } else {
         "no"
+    }
+}
+
+fn first_u64_in_text(text: &str) -> Option<u64> {
+    text.split_whitespace().find_map(|token| {
+        token
+            .trim_matches(|ch: char| !ch.is_ascii_digit())
+            .parse::<u64>()
+            .ok()
+    })
+}
+
+fn build_line_diff(before: &str, after: &str) -> String {
+    let before_lines: Vec<&str> = before.lines().collect();
+    let after_lines: Vec<&str> = after.lines().collect();
+    let max_len = before_lines.len().max(after_lines.len());
+    let mut diff_lines = Vec::new();
+
+    for idx in 0..max_len {
+        let left = before_lines.get(idx).copied().unwrap_or("");
+        let right = after_lines.get(idx).copied().unwrap_or("");
+        if left != right {
+            if !left.is_empty() {
+                diff_lines.push(format!("- {left}"));
+            }
+            if !right.is_empty() {
+                diff_lines.push(format!("+ {right}"));
+            }
+        }
+    }
+
+    if diff_lines.is_empty() {
+        "No line changes.".to_string()
+    } else {
+        diff_lines.join("\n")
     }
 }
 
@@ -1595,6 +1800,26 @@ pub fn run() -> Result<(), slint::PlatformError> {
         ui.on_ai_cycle_provider_requested(move || {
             if let Some(ui) = ui_weak.upgrade() {
                 controller.borrow_mut().cycle_ai_provider(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_ai_apply_patch_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().request_apply_ai_patch(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_ai_confirm_patch_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().confirm_apply_ai_patch(&ui);
             }
         });
     }
