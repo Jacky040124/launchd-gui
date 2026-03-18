@@ -3,6 +3,7 @@ import { Button, HorizontalBox, LineEdit, ScrollView, VerticalBox } from "std-wi
 export component MainWindow inherits Window {
     in-out property <[string]> job_lines: [];
     in-out property <string> status_message: "";
+    in-out property <bool> busy: false;
     in-out property <string> detail_label: "";
     in-out property <string> detail_scope: "";
     in-out property <string> detail_status: "";
@@ -28,10 +29,11 @@ export component MainWindow inherits Window {
             spacing: 8px;
             Button {
                 text: "Refresh";
+                enabled: !root.busy;
                 clicked => { root.refresh_requested(); }
             }
             Text {
-                text: "LaunchPad · minimalist launchd hub";
+                text: root.busy ? "LaunchPad · working..." : "LaunchPad · minimalist launchd hub";
                 vertical-alignment: center;
             }
         }
@@ -77,22 +79,22 @@ export component MainWindow inherits Window {
             spacing: 8px;
             Button {
                 text: "Start";
-                enabled: root.can_trigger;
+                enabled: root.can_trigger && !root.busy;
                 clicked => { root.trigger_requested("start"); }
             }
             Button {
                 text: "Stop";
-                enabled: root.can_trigger;
+                enabled: root.can_trigger && !root.busy;
                 clicked => { root.trigger_requested("stop"); }
             }
             Button {
                 text: "Kickstart";
-                enabled: root.can_trigger;
+                enabled: root.can_trigger && !root.busy;
                 clicked => { root.trigger_requested("kickstart"); }
             }
             Button {
                 text: "Delete";
-                enabled: root.can_delete;
+                enabled: root.can_delete && !root.busy;
                 clicked => { root.delete_requested(); }
             }
         }
@@ -104,7 +106,7 @@ export component MainWindow inherits Window {
             VerticalBox {
                 padding: 8px;
                 Text {
-                    text: root.status_message;
+                    text: root.busy ? "Working..." : root.status_message;
                     wrap: word-wrap;
                 }
             }

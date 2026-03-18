@@ -47,6 +47,7 @@ impl AppController {
     }
 
     fn refresh(&mut self, ui: &MainWindow) {
+        ui.set_busy(true);
         self.ui_state.reset_pending_delete();
         match self.job_service.list_jobs() {
             Ok(jobs) => {
@@ -61,6 +62,7 @@ impl AppController {
                     ui.set_status_message(
                         "No launchd jobs found in configured directories.".into(),
                     );
+                    ui.set_busy(false);
                     return;
                 }
 
@@ -72,6 +74,7 @@ impl AppController {
                 self.ui_state.select(new_selected);
                 self.update_selection_details(ui);
                 ui.set_status_message(format!("Loaded {} jobs.", self.jobs.len()).into());
+                ui.set_busy(false);
             }
             Err(err) => {
                 self.jobs.clear();
@@ -79,6 +82,7 @@ impl AppController {
                 ui.set_job_lines(ModelRc::new(VecModel::from(Vec::<SharedString>::new())));
                 self.update_selection_details(ui);
                 ui.set_status_message(format!("Failed to refresh jobs: {err}").into());
+                ui.set_busy(false);
             }
         }
     }
@@ -103,6 +107,7 @@ impl AppController {
         }
 
         let selected_job = self.jobs[index].clone();
+        ui.set_busy(true);
         match self.action_service.execute(&selected_job, action) {
             Ok(()) => {
                 ui.set_status_message(format!("{} command sent.", action.as_str()).into());
@@ -110,6 +115,7 @@ impl AppController {
             }
             Err(err) => {
                 ui.set_status_message(format!("{} failed: {err}", action.as_str()).into());
+                ui.set_busy(false);
             }
         }
     }
@@ -133,6 +139,7 @@ impl AppController {
         }
 
         let selected_job = self.jobs[index].clone();
+        ui.set_busy(true);
         match self.delete_service.delete(&selected_job) {
             Ok(()) => {
                 ui.set_status_message("Job plist deleted successfully.".into());
@@ -140,6 +147,7 @@ impl AppController {
             }
             Err(err) => {
                 ui.set_status_message(format!("Delete failed: {err}").into());
+                ui.set_busy(false);
             }
         }
     }
