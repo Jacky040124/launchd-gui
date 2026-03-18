@@ -1,0 +1,70 @@
+import { Button, HorizontalBox, LineEdit, VerticalBox } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+
+export component EditorLogsPanel inherits Rectangle {
+    in-out property <bool> busy: false;
+    in-out property <string> log_mode_text: "Mode:History";
+    in-out property <string> log_window_minutes: "10";
+    in-out property <string> log_stream_seconds: "5";
+    in-out property <string> log_max_lines: "120";
+    in-out property <string> log_view_text: "";
+    callback toggle_log_mode_requested();
+    callback log_window_minutes_changed(string);
+    callback log_stream_seconds_changed(string);
+    callback log_max_lines_changed(string);
+    callback refresh_logs_requested();
+
+    border-width: 1px;
+    border-color: RaycastTheme.border;
+    border-radius: 8px;
+    background: RaycastTheme.surface-muted;
+
+    VerticalBox {
+        padding: 8px;
+        spacing: 6px;
+        HorizontalBox {
+            spacing: 8px;
+            Text {
+                text: "Logs";
+                color: RaycastTheme.text-primary;
+                font-weight: 600;
+            }
+            Button {
+                text: root.log_mode_text;
+                enabled: !root.busy;
+                clicked => { root.toggle_log_mode_requested(); }
+            }
+            LineEdit {
+                width: 130px;
+                enabled: !root.busy;
+                text <=> root.log_window_minutes;
+                placeholder-text: "Window (min)";
+                edited(value) => { root.log_window_minutes_changed(value); }
+            }
+            LineEdit {
+                width: 130px;
+                enabled: !root.busy;
+                text <=> root.log_stream_seconds;
+                placeholder-text: "Stream (sec)";
+                edited(value) => { root.log_stream_seconds_changed(value); }
+            }
+            LineEdit {
+                width: 130px;
+                enabled: !root.busy;
+                text <=> root.log_max_lines;
+                placeholder-text: "Max lines";
+                edited(value) => { root.log_max_lines_changed(value); }
+            }
+            Button {
+                text: "Refresh Logs";
+                enabled: !root.busy;
+                clicked => { root.refresh_logs_requested(); }
+            }
+        }
+        Text {
+            text: root.log_view_text;
+            wrap: word-wrap;
+            color: RaycastTheme.text-secondary;
+        }
+    }
+}

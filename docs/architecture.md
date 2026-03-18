@@ -111,6 +111,9 @@ Slint provides a minimal desktop UI:
 - `status_filter_bar.slint`
 - `jobs_workspace.slint`
 - `action_bar.slint`
+- `editor_logs_panel.slint`
+- `editor_ai_panel.slint`
+- `editor_key_panel.slint`
 
 `main.rs` wires UI callbacks into service calls and refresh logic.
 

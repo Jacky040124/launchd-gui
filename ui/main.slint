@@ -1,10 +1,13 @@
-import { Button, HorizontalBox, LineEdit, ListView, VerticalBox } from "std-widgets.slint";
+import { Button, HorizontalBox, LineEdit, VerticalBox } from "std-widgets.slint";
 import { RaycastTheme } from "theme/raycast_tokens.slint";
 import { TopCommandBar } from "components/top_command_bar.slint";
 import { SearchScopeBar } from "components/search_scope_bar.slint";
 import { StatusFilterBar } from "components/status_filter_bar.slint";
 import { JobsWorkspace } from "components/jobs_workspace.slint";
 import { ActionBar } from "components/action_bar.slint";
+import { EditorLogsPanel } from "components/editor_logs_panel.slint";
+import { EditorAiPanel } from "components/editor_ai_panel.slint";
+import { EditorKeyPanel } from "components/editor_key_panel.slint";
 
 export component MainWindow inherits Window {
     in-out property <[string]> job_lines: [];
@@ -340,160 +343,41 @@ export component MainWindow inherits Window {
                     }
                 }
 
-                Rectangle {
-                    border-width: 1px;
-                    border-color: RaycastTheme.border;
-                    border-radius: 8px;
-                    background: RaycastTheme.surface-muted;
-                    VerticalBox {
-                        padding: 8px;
-                        spacing: 6px;
-                        HorizontalBox {
-                            spacing: 8px;
-                            Text {
-                                text: "Logs";
-                                color: RaycastTheme.text-primary;
-                                font-weight: 600;
-                            }
-                            Button {
-                                text: root.log_mode_text;
-                                enabled: !root.busy;
-                                clicked => { root.toggle_log_mode_requested(); }
-                            }
-                            LineEdit {
-                                width: 130px;
-                                enabled: !root.busy;
-                                text <=> root.log_window_minutes;
-                                placeholder-text: "Window (min)";
-                                edited(value) => { root.log_window_minutes_changed(value); }
-                            }
-                            LineEdit {
-                                width: 130px;
-                                enabled: !root.busy;
-                                text <=> root.log_stream_seconds;
-                                placeholder-text: "Stream (sec)";
-                                edited(value) => { root.log_stream_seconds_changed(value); }
-                            }
-                            LineEdit {
-                                width: 130px;
-                                enabled: !root.busy;
-                                text <=> root.log_max_lines;
-                                placeholder-text: "Max lines";
-                                edited(value) => { root.log_max_lines_changed(value); }
-                            }
-                            Button {
-                                text: "Refresh Logs";
-                                enabled: !root.busy;
-                                clicked => { root.refresh_logs_requested(); }
-                            }
-                        }
-                        Text {
-                            text: root.log_view_text;
-                            wrap: word-wrap;
-                            color: RaycastTheme.text-secondary;
-                        }
-                    }
+                EditorLogsPanel {
+                    busy: root.busy;
+                    log_mode_text: root.log_mode_text;
+                    log_window_minutes <=> root.log_window_minutes;
+                    log_stream_seconds <=> root.log_stream_seconds;
+                    log_max_lines <=> root.log_max_lines;
+                    log_view_text: root.log_view_text;
+                    toggle_log_mode_requested => { root.toggle_log_mode_requested(); }
+                    log_window_minutes_changed(value) => { root.log_window_minutes_changed(value); }
+                    log_stream_seconds_changed(value) => { root.log_stream_seconds_changed(value); }
+                    log_max_lines_changed(value) => { root.log_max_lines_changed(value); }
+                    refresh_logs_requested => { root.refresh_logs_requested(); }
                 }
 
-                Rectangle {
-                    border-width: 1px;
-                    border-color: RaycastTheme.border-info;
-                    border-radius: 8px;
-                    background: RaycastTheme.surface-info;
-                    VerticalBox {
-                        padding: 8px;
-                        spacing: 6px;
-                        HorizontalBox {
-                            spacing: 8px;
-                            LineEdit {
-                                width: 720px;
-                                enabled: !root.busy;
-                                text <=> root.ai_prompt;
-                                placeholder-text: "Ask AI to modify this launchd job...";
-                                edited(value) => { root.ai_prompt_changed(value); }
-                                accepted => { root.ai_request_requested(); }
-                            }
-                            Button {
-                                text: root.ai_provider_text;
-                                enabled: !root.busy;
-                                clicked => { root.ai_cycle_provider_requested(); }
-                            }
-                            Button {
-                                text: "AI Analyze";
-                                enabled: !root.busy;
-                                clicked => { root.ai_request_requested(); }
-                            }
-                            Button {
-                                text: "Apply AI Patch";
-                                enabled: root.ai_patch_ready && !root.busy;
-                                clicked => { root.ai_apply_patch_requested(); }
-                            }
-                            Button {
-                                text: "Confirm Apply";
-                                enabled: root.ai_patch_ready && !root.busy;
-                                clicked => { root.ai_confirm_patch_requested(); }
-                            }
-                        }
-                        Text {
-                            text: root.ai_response;
-                            wrap: word-wrap;
-                            color: RaycastTheme.accent;
-                        }
-                        Text {
-                            text: root.ai_diff_preview;
-                            wrap: word-wrap;
-                            color: RaycastTheme.text-secondary;
-                        }
-                    }
+                EditorAiPanel {
+                    busy: root.busy;
+                    ai_prompt <=> root.ai_prompt;
+                    ai_provider_text: root.ai_provider_text;
+                    ai_patch_ready: root.ai_patch_ready;
+                    ai_response: root.ai_response;
+                    ai_diff_preview: root.ai_diff_preview;
+                    ai_prompt_changed(value) => { root.ai_prompt_changed(value); }
+                    ai_request_requested => { root.ai_request_requested(); }
+                    ai_cycle_provider_requested => { root.ai_cycle_provider_requested(); }
+                    ai_apply_patch_requested => { root.ai_apply_patch_requested(); }
+                    ai_confirm_patch_requested => { root.ai_confirm_patch_requested(); }
                 }
 
-                Rectangle {
-                    border-width: 1px;
-                    border-color: RaycastTheme.border;
-                    border-radius: 8px;
-                    background: RaycastTheme.surface;
-                    VerticalBox {
-                        padding: 8px;
-                        spacing: 6px;
-                        HorizontalBox {
-                            spacing: 8px;
-                            LineEdit {
-                                width: 320px;
-                                enabled: !root.busy;
-                                text <=> root.key_panel_query;
-                                placeholder-text: "Search launchd keys...";
-                                edited(value) => { root.key_panel_query_changed(value); }
-                            }
-                            Text {
-                                text: "Key Panel · " + root.key_panel_count_text;
-                                vertical-alignment: center;
-                                color: RaycastTheme.text-secondary;
-                            }
-                        }
-                        Rectangle {
-                            border-width: 1px;
-                            border-color: RaycastTheme.border;
-                            border-radius: 8px;
-                            background: RaycastTheme.surface-muted;
-                            clip: true;
-                            height: 170px;
-                            ListView {
-                                for line[index] in root.key_panel_lines : Rectangle {
-                                    height: 34px;
-                                    background: RaycastTheme.surface;
-                                    Text {
-                                        text: line;
-                                        x: 8px;
-                                        y: (parent.height - self.height) / 2;
-                                        color: RaycastTheme.text-secondary;
-                                    }
-                                    TouchArea {
-                                        clicked => { root.key_panel_add_requested(index); }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                EditorKeyPanel {
+                    busy: root.busy;
+                    key_panel_query <=> root.key_panel_query;
+                    key_panel_count_text: root.key_panel_count_text;
+                    key_panel_lines: root.key_panel_lines;
+                    key_panel_query_changed(value) => { root.key_panel_query_changed(value); }
+                    key_panel_add_requested(index) => { root.key_panel_add_requested(index); }
                 }
             }
         }

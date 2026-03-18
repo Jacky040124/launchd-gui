@@ -1,0 +1,59 @@
+import { HorizontalBox, LineEdit, ListView, VerticalBox } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+
+export component EditorKeyPanel inherits Rectangle {
+    in-out property <bool> busy: false;
+    in-out property <string> key_panel_query: "";
+    in-out property <string> key_panel_count_text: "";
+    in-out property <[string]> key_panel_lines: [];
+    callback key_panel_query_changed(string);
+    callback key_panel_add_requested(int);
+
+    border-width: 1px;
+    border-color: RaycastTheme.border;
+    border-radius: 8px;
+    background: RaycastTheme.surface;
+
+    VerticalBox {
+        padding: 8px;
+        spacing: 6px;
+        HorizontalBox {
+            spacing: 8px;
+            LineEdit {
+                width: 320px;
+                enabled: !root.busy;
+                text <=> root.key_panel_query;
+                placeholder-text: "Search launchd keys...";
+                edited(value) => { root.key_panel_query_changed(value); }
+            }
+            Text {
+                text: "Key Panel · " + root.key_panel_count_text;
+                vertical-alignment: center;
+                color: RaycastTheme.text-secondary;
+            }
+        }
+        Rectangle {
+            border-width: 1px;
+            border-color: RaycastTheme.border;
+            border-radius: 8px;
+            background: RaycastTheme.surface-muted;
+            clip: true;
+            height: 170px;
+            ListView {
+                for line[index] in root.key_panel_lines : Rectangle {
+                    height: 34px;
+                    background: RaycastTheme.surface;
+                    Text {
+                        text: line;
+                        x: 8px;
+                        y: (parent.height - self.height) / 2;
+                        color: RaycastTheme.text-secondary;
+                    }
+                    TouchArea {
+                        clicked => { root.key_panel_add_requested(index); }
+                    }
+                }
+            }
+        }
+    }
+}

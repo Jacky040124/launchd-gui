@@ -1,0 +1,67 @@
+import { Button, HorizontalBox, LineEdit, VerticalBox } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+
+export component EditorAiPanel inherits Rectangle {
+    in-out property <bool> busy: false;
+    in-out property <string> ai_prompt: "";
+    in-out property <string> ai_provider_text: "AI Provider: heuristic-local";
+    in-out property <bool> ai_patch_ready: false;
+    in-out property <string> ai_response: "";
+    in-out property <string> ai_diff_preview: "";
+    callback ai_prompt_changed(string);
+    callback ai_request_requested();
+    callback ai_cycle_provider_requested();
+    callback ai_apply_patch_requested();
+    callback ai_confirm_patch_requested();
+
+    border-width: 1px;
+    border-color: RaycastTheme.border-info;
+    border-radius: 8px;
+    background: RaycastTheme.surface-info;
+
+    VerticalBox {
+        padding: 8px;
+        spacing: 6px;
+        HorizontalBox {
+            spacing: 8px;
+            LineEdit {
+                width: 720px;
+                enabled: !root.busy;
+                text <=> root.ai_prompt;
+                placeholder-text: "Ask AI to modify this launchd job...";
+                edited(value) => { root.ai_prompt_changed(value); }
+                accepted => { root.ai_request_requested(); }
+            }
+            Button {
+                text: root.ai_provider_text;
+                enabled: !root.busy;
+                clicked => { root.ai_cycle_provider_requested(); }
+            }
+            Button {
+                text: "AI Analyze";
+                enabled: !root.busy;
+                clicked => { root.ai_request_requested(); }
+            }
+            Button {
+                text: "Apply AI Patch";
+                enabled: root.ai_patch_ready && !root.busy;
+                clicked => { root.ai_apply_patch_requested(); }
+            }
+            Button {
+                text: "Confirm Apply";
+                enabled: root.ai_patch_ready && !root.busy;
+                clicked => { root.ai_confirm_patch_requested(); }
+            }
+        }
+        Text {
+            text: root.ai_response;
+            wrap: word-wrap;
+            color: RaycastTheme.accent;
+        }
+        Text {
+            text: root.ai_diff_preview;
+            wrap: word-wrap;
+            color: RaycastTheme.text-secondary;
+        }
+    }
+}
