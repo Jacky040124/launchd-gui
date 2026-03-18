@@ -1,13 +1,11 @@
-import { Button, HorizontalBox, LineEdit, VerticalBox } from "std-widgets.slint";
+import { Button, HorizontalBox, VerticalBox } from "std-widgets.slint";
 import { RaycastTheme } from "theme/raycast_tokens.slint";
 import { TopCommandBar } from "components/top_command_bar.slint";
 import { SearchScopeBar } from "components/search_scope_bar.slint";
 import { StatusFilterBar } from "components/status_filter_bar.slint";
 import { JobsWorkspace } from "components/jobs_workspace.slint";
 import { ActionBar } from "components/action_bar.slint";
-import { EditorLogsPanel } from "components/editor_logs_panel.slint";
-import { EditorAiPanel } from "components/editor_ai_panel.slint";
-import { EditorKeyPanel } from "components/editor_key_panel.slint";
+import { EditorMainPanel } from "components/editor_main_panel.slint";
 
 export component MainWindow inherits Window {
     in-out property <[string]> job_lines: [];
@@ -188,198 +186,58 @@ export component MainWindow inherits Window {
             delete_requested => { root.delete_requested(); }
         }
 
-        Rectangle {
-            border-width: 1px;
-            border-color: RaycastTheme.border;
-            border-radius: 10px;
-            background: RaycastTheme.surface;
-            clip: true;
-
-            VerticalBox {
-                padding: 10px;
-                spacing: 8px;
-
-                HorizontalBox {
-                    spacing: 8px;
-                    Text {
-                        text: "Plist Editor (Standard + XML)";
-                        font-weight: 700;
-                        color: RaycastTheme.text-primary;
-                    }
-                    Text {
-                        text: root.editor_target_text;
-                        color: RaycastTheme.text-secondary;
-                    }
-                    Button {
-                        text: "New User Job";
-                        enabled: !root.busy;
-                        clicked => { root.new_job_requested("user-agent"); }
-                    }
-                    Button {
-                        text: "New Global Job";
-                        enabled: !root.busy;
-                        clicked => { root.new_job_requested("global-agent"); }
-                    }
-                }
-
-                HorizontalBox {
-                    spacing: 8px;
-                    LineEdit {
-                        width: 220px;
-                        enabled: !root.busy;
-                        text <=> root.editor_label;
-                        placeholder-text: "Label";
-                        edited(value) => { root.editor_label_changed(value); }
-                    }
-                    LineEdit {
-                        width: 220px;
-                        enabled: !root.busy;
-                        text <=> root.editor_program;
-                        placeholder-text: "Program path";
-                        edited(value) => { root.editor_program_changed(value); }
-                    }
-                    LineEdit {
-                        width: 240px;
-                        enabled: !root.busy;
-                        text <=> root.editor_program_arguments;
-                        placeholder-text: "ProgramArguments (space separated)";
-                        edited(value) => { root.editor_args_changed(value); }
-                    }
-                    LineEdit {
-                        width: 200px;
-                        enabled: !root.busy;
-                        text <=> root.editor_working_directory;
-                        placeholder-text: "WorkingDirectory";
-                        edited(value) => { root.editor_working_dir_changed(value); }
-                    }
-                }
-
-                HorizontalBox {
-                    spacing: 8px;
-                    LineEdit {
-                        width: 220px;
-                        enabled: !root.busy;
-                        text <=> root.editor_start_interval;
-                        placeholder-text: "StartInterval (seconds)";
-                        edited(value) => { root.editor_start_interval_changed(value); }
-                    }
-                    LineEdit {
-                        width: 460px;
-                        enabled: !root.busy;
-                        text <=> root.editor_env_vars;
-                        placeholder-text: "EnvironmentVariables: KEY=VALUE, KEY2=VALUE2";
-                        edited(value) => { root.editor_env_changed(value); }
-                    }
-                    Button {
-                        text: root.editor_run_at_load ? "RunAtLoad:yes" : "RunAtLoad:no";
-                        enabled: !root.busy;
-                        clicked => { root.toggle_editor_run_at_load(); }
-                    }
-                    Button {
-                        text: root.editor_keep_alive ? "KeepAlive:yes" : "KeepAlive:no";
-                        enabled: !root.busy;
-                        clicked => { root.toggle_editor_keep_alive(); }
-                    }
-                    Button {
-                        text: "Save";
-                        enabled: !root.busy;
-                        clicked => { root.save_editor_requested(); }
-                    }
-                    Button {
-                        text: "Save+Load";
-                        enabled: !root.busy;
-                        clicked => { root.save_editor_and_load_requested(); }
-                    }
-                    Button {
-                        text: "Save+Load+Enable";
-                        enabled: !root.busy;
-                        clicked => { root.save_editor_load_enable_requested(); }
-                    }
-                }
-
-                HorizontalBox {
-                    spacing: 8px;
-                    LineEdit {
-                        width: 980px;
-                        enabled: !root.busy;
-                        text <=> root.editor_expert_entries;
-                        placeholder-text: "Expert keys: KEY=VALUE, KEY2=VALUE2 (for undocumented or advanced launchd keys)";
-                        edited(value) => { root.editor_expert_entries_changed(value); }
-                    }
-                }
-
-                Rectangle {
-                    border-width: 1px;
-                    border-color: RaycastTheme.border;
-                    border-radius: 8px;
-                    background: RaycastTheme.surface-muted;
-                    VerticalBox {
-                        padding: 8px;
-                        Text {
-                            text: root.editor_xml_preview;
-                            wrap: word-wrap;
-                            color: RaycastTheme.text-secondary;
-                        }
-                    }
-                }
-
-                Rectangle {
-                    border-width: 1px;
-                    border-color: RaycastTheme.border-warning;
-                    border-radius: 8px;
-                    background: RaycastTheme.warning-bg;
-                    VerticalBox {
-                        padding: 8px;
-                        Text {
-                            text: "Diagnostics";
-                            color: RaycastTheme.warning-text;
-                            font-weight: 600;
-                        }
-                        Text {
-                            text: root.editor_diagnostics_text;
-                            wrap: word-wrap;
-                            color: RaycastTheme.warning-text;
-                        }
-                    }
-                }
-
-                EditorLogsPanel {
-                    busy: root.busy;
-                    log_mode_text: root.log_mode_text;
-                    log_window_minutes <=> root.log_window_minutes;
-                    log_stream_seconds <=> root.log_stream_seconds;
-                    log_max_lines <=> root.log_max_lines;
-                    log_view_text: root.log_view_text;
-                    toggle_log_mode_requested => { root.toggle_log_mode_requested(); }
-                    log_window_minutes_changed(value) => { root.log_window_minutes_changed(value); }
-                    log_stream_seconds_changed(value) => { root.log_stream_seconds_changed(value); }
-                    log_max_lines_changed(value) => { root.log_max_lines_changed(value); }
-                    refresh_logs_requested => { root.refresh_logs_requested(); }
-                }
-
-                EditorAiPanel {
-                    busy: root.busy;
-                    ai_prompt <=> root.ai_prompt;
-                    ai_provider_text: root.ai_provider_text;
-                    ai_patch_ready: root.ai_patch_ready;
-                    ai_response: root.ai_response;
-                    ai_diff_preview: root.ai_diff_preview;
-                    ai_prompt_changed(value) => { root.ai_prompt_changed(value); }
-                    ai_request_requested => { root.ai_request_requested(); }
-                    ai_cycle_provider_requested => { root.ai_cycle_provider_requested(); }
-                    ai_apply_patch_requested => { root.ai_apply_patch_requested(); }
-                    ai_confirm_patch_requested => { root.ai_confirm_patch_requested(); }
-                }
-
-                EditorKeyPanel {
-                    busy: root.busy;
-                    key_panel_query <=> root.key_panel_query;
-                    key_panel_count_text: root.key_panel_count_text;
-                    key_panel_lines: root.key_panel_lines;
-                    key_panel_query_changed(value) => { root.key_panel_query_changed(value); }
-                    key_panel_add_requested(index) => { root.key_panel_add_requested(index); }
-                }
-            }
+        EditorMainPanel {
+            busy: root.busy;
+            editor_target_text: root.editor_target_text;
+            editor_label <=> root.editor_label;
+            editor_program <=> root.editor_program;
+            editor_program_arguments <=> root.editor_program_arguments;
+            editor_working_directory <=> root.editor_working_directory;
+            editor_start_interval <=> root.editor_start_interval;
+            editor_env_vars <=> root.editor_env_vars;
+            editor_expert_entries <=> root.editor_expert_entries;
+            editor_run_at_load: root.editor_run_at_load;
+            editor_keep_alive: root.editor_keep_alive;
+            editor_xml_preview: root.editor_xml_preview;
+            editor_diagnostics_text: root.editor_diagnostics_text;
+            log_mode_text: root.log_mode_text;
+            log_window_minutes <=> root.log_window_minutes;
+            log_stream_seconds <=> root.log_stream_seconds;
+            log_max_lines <=> root.log_max_lines;
+            log_view_text: root.log_view_text;
+            ai_prompt <=> root.ai_prompt;
+            ai_provider_text: root.ai_provider_text;
+            ai_patch_ready: root.ai_patch_ready;
+            ai_response: root.ai_response;
+            ai_diff_preview: root.ai_diff_preview;
+            key_panel_query <=> root.key_panel_query;
+            key_panel_count_text: root.key_panel_count_text;
+            key_panel_lines: root.key_panel_lines;
+            new_job_requested(scope) => { root.new_job_requested(scope); }
+            editor_label_changed(value) => { root.editor_label_changed(value); }
+            editor_program_changed(value) => { root.editor_program_changed(value); }
+            editor_args_changed(value) => { root.editor_args_changed(value); }
+            editor_working_dir_changed(value) => { root.editor_working_dir_changed(value); }
+            editor_start_interval_changed(value) => { root.editor_start_interval_changed(value); }
+            editor_env_changed(value) => { root.editor_env_changed(value); }
+            editor_expert_entries_changed(value) => { root.editor_expert_entries_changed(value); }
+            toggle_editor_run_at_load => { root.toggle_editor_run_at_load(); }
+            toggle_editor_keep_alive => { root.toggle_editor_keep_alive(); }
+            save_editor_requested => { root.save_editor_requested(); }
+            save_editor_and_load_requested => { root.save_editor_and_load_requested(); }
+            save_editor_load_enable_requested => { root.save_editor_load_enable_requested(); }
+            toggle_log_mode_requested => { root.toggle_log_mode_requested(); }
+            log_window_minutes_changed(value) => { root.log_window_minutes_changed(value); }
+            log_stream_seconds_changed(value) => { root.log_stream_seconds_changed(value); }
+            log_max_lines_changed(value) => { root.log_max_lines_changed(value); }
+            refresh_logs_requested => { root.refresh_logs_requested(); }
+            ai_prompt_changed(value) => { root.ai_prompt_changed(value); }
+            ai_request_requested => { root.ai_request_requested(); }
+            ai_cycle_provider_requested => { root.ai_cycle_provider_requested(); }
+            ai_apply_patch_requested => { root.ai_apply_patch_requested(); }
+            ai_confirm_patch_requested => { root.ai_confirm_patch_requested(); }
+            key_panel_query_changed(value) => { root.key_panel_query_changed(value); }
+            key_panel_add_requested(index) => { root.key_panel_add_requested(index); }
         }
 
         Rectangle {
