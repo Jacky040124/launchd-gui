@@ -92,6 +92,7 @@ tests/
   - `LAUNCHPAD_QUICKLAUNCH_ENABLE` (`true/false`, default false)
   - `LAUNCHPAD_QUICKLAUNCH_STARRED_ONLY` (`true/false`, default true)
   - `LAUNCHPAD_QUICKLAUNCH_MAX_ITEMS` (default 12)
+  - `LAUNCHPAD_QUICKLAUNCH_HELPER` (optional helper executable receiving `--sync-json`)
 
 ### Run
 

@@ -1,6 +1,10 @@
 use crate::error::{AppError, AppResult};
+use serde::{Deserialize, Serialize};
+use std::env;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QuickLaunchItem {
     pub id: String,
     pub title: String,
@@ -19,6 +23,46 @@ impl QuickLaunchProvider for NoopQuickLaunchProvider {
         Err(AppError::Validation(
             "QuickLaunch menubar integration is not available on this build.".to_string(),
         ))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BridgeQuickLaunchProvider {
+    executable: String,
+}
+
+impl BridgeQuickLaunchProvider {
+    pub fn from_env() -> Option<Self> {
+        env::var("LAUNCHPAD_QUICKLAUNCH_HELPER")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .map(|executable| Self { executable })
+    }
+}
+
+impl QuickLaunchProvider for BridgeQuickLaunchProvider {
+    fn sync_items(&self, items: &[QuickLaunchItem]) -> AppResult<()> {
+        let payload = serde_json::to_string(items)?;
+        let mut child = Command::new(&self.executable)
+            .arg("--sync-json")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        if let Some(stdin) = child.stdin.as_mut() {
+            stdin.write_all(payload.as_bytes())?;
+        }
+
+        let output = child.wait_with_output()?;
+        if output.status.success() {
+            return Ok(());
+        }
+
+        Err(AppError::CommandFailed {
+            command: format!("{} --sync-json", self.executable),
+            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        })
     }
 }
 

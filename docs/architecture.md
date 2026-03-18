@@ -40,7 +40,8 @@ This layer contains no process execution and is suitable for deterministic tests
   - provider abstraction and provider-specific adapters
   - includes Claude Agent sidecar bridge and provider stubs
 - `quicklaunch.rs`
-  - QuickLaunch menu-bar provider abstraction (current build includes no-op provider)
+  - QuickLaunch menu-bar provider abstraction
+  - includes no-op provider and helper-bridge provider (`--sync-json` contract)
 - `launchctl.rs`
   - wraps `launchctl` command invocations and error normalization
   - parses `launchctl list` bulk status output
