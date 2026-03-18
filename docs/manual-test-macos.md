@@ -65,3 +65,18 @@ Expected:
 
 Expected:
 - No destructive action allowed for system daemons.
+
+## E. Search and Scope Filters
+
+1. Enter a keyword in the search input (for example, part of a label).
+2. Verify the list updates to matching jobs.
+3. Click each scope filter button:
+   - **All**
+   - **User Agents**
+   - **Global Agents**
+   - **Daemons**
+4. Verify the list updates and the filter badge text changes accordingly.
+
+Expected:
+- Search and scope filter can be combined.
+- Filter status text reflects both scope and query when both are set.

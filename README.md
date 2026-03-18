@@ -10,6 +10,7 @@ LaunchPad currently focuses on three core operations:
    - `~/Library/LaunchAgents`
    - `/Library/LaunchAgents`
    - `/Library/LaunchDaemons` (read-only)
+   - with built-in **search + scope filters** (`All/User Agents/Global Agents/Daemons`)
 2. **Trigger actions**:
    - `start`
    - `stop`
