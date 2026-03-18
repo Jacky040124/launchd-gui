@@ -19,13 +19,38 @@ impl UiState {
         self.pending_delete_index = None;
     }
 
-    pub fn request_delete_confirmation(&mut self, index: usize) -> bool {
-        if self.pending_delete_index == Some(index) {
-            self.pending_delete_index = None;
-            true
-        } else {
-            self.pending_delete_index = Some(index);
-            false
-        }
+    pub fn begin_delete_confirmation(&mut self, index: usize) {
+        self.pending_delete_index = Some(index);
+    }
+
+    pub fn cancel_delete_confirmation(&mut self) {
+        self.pending_delete_index = None;
+    }
+
+    pub fn take_confirmed_delete(&mut self) -> Option<usize> {
+        self.pending_delete_index.take()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UiState;
+
+    #[test]
+    fn delete_confirmation_lifecycle() {
+        let mut state = UiState::default();
+        state.begin_delete_confirmation(3);
+        assert_eq!(state.pending_delete_index, Some(3));
+
+        assert_eq!(state.take_confirmed_delete(), Some(3));
+        assert_eq!(state.pending_delete_index, None);
+    }
+
+    #[test]
+    fn cancel_delete_confirmation_clears_pending_value() {
+        let mut state = UiState::default();
+        state.begin_delete_confirmation(2);
+        state.cancel_delete_confirmation();
+        assert_eq!(state.pending_delete_index, None);
     }
 }

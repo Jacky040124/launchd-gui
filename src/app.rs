@@ -49,6 +49,8 @@ impl AppController {
     fn refresh(&mut self, ui: &MainWindow) {
         ui.set_busy(true);
         self.ui_state.reset_pending_delete();
+        ui.set_confirm_delete_visible(false);
+        ui.set_confirm_delete_label("".into());
         match self.job_service.list_jobs() {
             Ok(jobs) => {
                 self.jobs = jobs;
@@ -92,6 +94,8 @@ impl AppController {
             return;
         }
         self.ui_state.select(index);
+        ui.set_confirm_delete_visible(false);
+        ui.set_confirm_delete_label("".into());
         self.update_selection_details(ui);
         ui.set_status_message(format!("Selected {}", self.jobs[index].label).into());
     }
@@ -106,6 +110,9 @@ impl AppController {
             return;
         }
 
+        self.ui_state.cancel_delete_confirmation();
+        ui.set_confirm_delete_visible(false);
+        ui.set_confirm_delete_label("".into());
         let selected_job = self.jobs[index].clone();
         ui.set_busy(true);
         match self.action_service.execute(&selected_job, action) {
@@ -130,22 +137,44 @@ impl AppController {
             return;
         }
 
-        if !self.ui_state.request_delete_confirmation(index) {
-            ui.set_status_message(
-                "Delete requested. Click Delete again to confirm removing the selected plist."
-                    .into(),
-            );
+        self.ui_state.begin_delete_confirmation(index);
+        ui.set_confirm_delete_label(self.jobs[index].label.clone().into());
+        ui.set_confirm_delete_visible(true);
+        ui.set_status_message("Delete requested. Review the warning and confirm deletion.".into());
+    }
+
+    fn cancel_delete(&mut self, ui: &MainWindow) {
+        self.ui_state.cancel_delete_confirmation();
+        ui.set_confirm_delete_visible(false);
+        ui.set_confirm_delete_label("".into());
+        ui.set_status_message("Delete request cancelled.".into());
+    }
+
+    fn confirm_delete(&mut self, ui: &MainWindow) {
+        let Some(index) = self.ui_state.take_confirmed_delete() else {
+            ui.set_confirm_delete_visible(false);
+            ui.set_confirm_delete_label("".into());
+            ui.set_status_message("No pending delete request.".into());
+            return;
+        };
+        if index >= self.jobs.len() {
+            ui.set_confirm_delete_visible(false);
+            ui.set_confirm_delete_label("".into());
+            ui.set_status_message("Selected job is no longer available.".into());
             return;
         }
 
         let selected_job = self.jobs[index].clone();
+        ui.set_confirm_delete_visible(false);
         ui.set_busy(true);
         match self.delete_service.delete(&selected_job) {
             Ok(()) => {
+                ui.set_confirm_delete_label("".into());
                 ui.set_status_message("Job plist deleted successfully.".into());
                 self.refresh(ui);
             }
             Err(err) => {
+                ui.set_confirm_delete_label("".into());
                 ui.set_status_message(format!("Delete failed: {err}").into());
                 ui.set_busy(false);
             }
@@ -186,6 +215,7 @@ fn clear_details(ui: &MainWindow) {
     ui.set_detail_status("".into());
     ui.set_detail_path("".into());
     ui.set_detail_error("".into());
+    ui.set_confirm_delete_label("".into());
     ui.set_can_trigger(false);
     ui.set_can_delete(false);
 }
@@ -240,6 +270,26 @@ pub fn run() -> Result<(), slint::PlatformError> {
         ui.on_delete_requested(move || {
             if let Some(ui) = ui_weak.upgrade() {
                 controller.borrow_mut().request_delete(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_confirm_delete(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().confirm_delete(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_cancel_delete(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().cancel_delete(&ui);
             }
         });
     }

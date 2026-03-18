@@ -45,8 +45,12 @@ Expected:
 
 1. Select a user agent plist you can safely remove.
 2. Click **Delete** once.
-3. Verify app asks for confirmation via status message.
-4. Click **Delete** again.
+3. Verify app shows a confirmation panel containing:
+   - target label
+   - irreversible warning text
+   - **Confirm Delete** and **Cancel** buttons
+4. Click **Cancel** once and verify the confirmation panel disappears.
+5. Click **Delete** again, then click **Confirm Delete**.
 5. Click **Refresh**.
 
 Expected:

@@ -1,9 +1,11 @@
-import { Button, HorizontalBox, LineEdit, ScrollView, VerticalBox } from "std-widgets.slint";
+import { Button, HorizontalBox, ScrollView, VerticalBox } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
     in-out property <[string]> job_lines: [];
     in-out property <string> status_message: "";
     in-out property <bool> busy: false;
+    in-out property <bool> confirm_delete_visible: false;
+    in-out property <string> confirm_delete_label: "";
     in-out property <string> detail_label: "";
     in-out property <string> detail_scope: "";
     in-out property <string> detail_status: "";
@@ -16,6 +18,8 @@ export component MainWindow inherits Window {
     callback select_job(int);
     callback trigger_requested(string);
     callback delete_requested();
+    callback confirm_delete();
+    callback cancel_delete();
 
     title: "LaunchPad";
     width: 980px;
@@ -96,6 +100,41 @@ export component MainWindow inherits Window {
                 text: "Delete";
                 enabled: root.can_delete && !root.busy;
                 clicked => { root.delete_requested(); }
+            }
+        }
+
+        Rectangle {
+            visible: root.confirm_delete_visible;
+            border-width: 1px;
+            border-color: #fecdca;
+            border-radius: 6px;
+            background: #fffbfa;
+
+            VerticalBox {
+                padding: 8px;
+                spacing: 6px;
+                Text {
+                    text: "Delete '" + root.confirm_delete_label + "' ?";
+                    color: #b42318;
+                    font-weight: 600;
+                }
+                Text {
+                    text: "This action is irreversible. The plist file will be removed.";
+                    wrap: word-wrap;
+                }
+                HorizontalBox {
+                    spacing: 8px;
+                    Button {
+                        text: "Confirm Delete";
+                        enabled: !root.busy;
+                        clicked => { root.confirm_delete(); }
+                    }
+                    Button {
+                        text: "Cancel";
+                        enabled: !root.busy;
+                        clicked => { root.cancel_delete(); }
+                    }
+                }
             }
         }
 
