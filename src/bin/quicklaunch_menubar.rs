@@ -3,6 +3,7 @@ mod macos {
     use std::process::Command;
     use std::time::{Duration, Instant};
 
+    use launchpad::adapter::quicklaunch::QuickLaunchItem;
     use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
     use tray_icon::{Icon, TrayIconBuilder};
 
@@ -66,10 +67,10 @@ mod macos {
 
         loop {
             if last_summary_update.elapsed() >= SUMMARY_REFRESH_INTERVAL {
-                let summary = fetch_summary(helper.as_str())
-                    .unwrap_or_else(|err| format!("summary unavailable: {err}"));
-                status_item.set_text(format!("QuickLaunch · {summary}"));
-                let _ = tray.set_tooltip(Some(format!("LaunchPad QuickLaunch · {summary}")));
+                let (badge, detail) = fetch_status_badge(helper.as_str())
+                    .unwrap_or_else(|err| ("⚪ summary unavailable".to_string(), err.to_string()));
+                status_item.set_text(format!("QuickLaunch · {badge}"));
+                let _ = tray.set_tooltip(Some(format!("LaunchPad QuickLaunch · {detail}")));
                 last_summary_update = Instant::now();
             }
 
@@ -79,11 +80,12 @@ mod macos {
                         break;
                     }
                     if event.id == refresh_summary.id() {
-                        let summary = fetch_summary(helper.as_str())
-                            .unwrap_or_else(|err| format!("summary unavailable: {err}"));
-                        status_item.set_text(format!("QuickLaunch · {summary}"));
-                        let _ =
-                            tray.set_tooltip(Some(format!("LaunchPad QuickLaunch · {summary}")));
+                        let (badge, detail) =
+                            fetch_status_badge(helper.as_str()).unwrap_or_else(|err| {
+                                ("⚪ summary unavailable".to_string(), err.to_string())
+                            });
+                        status_item.set_text(format!("QuickLaunch · {badge}"));
+                        let _ = tray.set_tooltip(Some(format!("LaunchPad QuickLaunch · {detail}")));
                         last_summary_update = Instant::now();
                         continue;
                     }
@@ -145,27 +147,57 @@ mod macos {
         Ok(Icon::from_rgba(rgba, width as u32, height as u32)?)
     }
 
-    fn fetch_summary(helper: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let output = Command::new(helper).arg("--summary").output()?;
+    fn fetch_status_badge(helper: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
+        let output = Command::new(helper).arg("--list-json").output()?;
         if !output.status.success() {
             return Err(format!(
-                "helper summary failed: {}",
+                "helper list-json failed: {}",
                 String::from_utf8_lossy(&output.stderr).trim()
             )
             .into());
         }
-        let summary = String::from_utf8_lossy(&output.stdout);
-        let normalized = summary
-            .lines()
-            .filter(|line| !line.trim().is_empty())
-            .take(3)
-            .collect::<Vec<_>>()
-            .join(" | ");
-        if normalized.is_empty() {
-            Ok("no tracked items".to_string())
+
+        let raw = String::from_utf8_lossy(&output.stdout);
+        let items: Vec<QuickLaunchItem> = if raw.trim().is_empty() {
+            Vec::new()
         } else {
-            Ok(normalized)
+            serde_json::from_str(raw.as_ref())?
+        };
+        if items.is_empty() {
+            return Ok((
+                "⚪ no tracked items".to_string(),
+                "no tracked items".to_string(),
+            ));
         }
+
+        let mut running = 0usize;
+        let mut loaded = 0usize;
+        let mut disabled = 0usize;
+        let mut unknown = 0usize;
+        for item in &items {
+            match item.status.as_str() {
+                "running" => running += 1,
+                "loaded" => loaded += 1,
+                "disabled" => disabled += 1,
+                _ => unknown += 1,
+            }
+        }
+        let badge = if running > 0 {
+            format!("🟢 R{running} L{loaded} D{disabled}")
+        } else if disabled > 0 {
+            format!("🟡 R{running} L{loaded} D{disabled}")
+        } else {
+            format!("🔵 R{running} L{loaded} D{disabled}")
+        };
+        let detail = format!(
+            "items={} running={} loaded={} disabled={} unknown={}",
+            items.len(),
+            running,
+            loaded,
+            disabled,
+            unknown
+        );
+        Ok((badge, detail))
     }
 
     fn enqueue_starred_action(

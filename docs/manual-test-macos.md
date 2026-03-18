@@ -282,6 +282,7 @@ Expected:
    ```
 4. In menu bar app:
    - click **Refresh Summary** and verify summary text updates
+   - verify menu status line shows badge like `🟢 R1 L3 D0`
    - click **Starred > Start/Restart Starred** (or any group action)
 5. Back in LaunchPad main window click **Refresh** to apply queued actions.
 6. (Optional) inspect helper queue:
@@ -292,4 +293,4 @@ Expected:
 Expected:
 - Menu bar helper can queue batch actions without opening LaunchPad window controls.
 - LaunchPad refresh drains and executes queued actions via shared service layer.
-- Summary refresh reflects current helper snapshot state.
+- Summary refresh reflects current helper snapshot state and updates running/loaded/disabled badge.
