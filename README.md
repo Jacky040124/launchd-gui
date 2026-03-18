@@ -138,6 +138,10 @@ cargo run --bin quicklaunch_menubar
 
 `quicklaunch_menubar` reads summary from `quicklaunch_helper` and can enqueue starred/group batch actions from the menu bar; LaunchPad applies them through shared action service auto-polling.
 Menu title shows a live status badge (`running/loaded/disabled` counts) based on helper snapshots.
+Menu also exposes per-item controls (Start/Stop/Restart/Enable/Disable) from helper snapshot top items.
+
+Optional menu sizing:
+- `LAUNCHPAD_QUICKLAUNCH_MENUBAR_MAX_ITEMS` (default `8`)
 
 ### Run
 

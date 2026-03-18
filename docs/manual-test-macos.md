@@ -279,6 +279,7 @@ Expected:
    export LAUNCHPAD_QUICKLAUNCH_HELPER=/path/to/quicklaunch_helper
    ```
 2. Start main app and refresh once so QuickLaunch snapshot exists.
+   - Optional: `export LAUNCHPAD_QUICKLAUNCH_MENUBAR_MAX_ITEMS=5`
 3. In another terminal, run:
    ```bash
    cargo run --bin quicklaunch_menubar
@@ -287,6 +288,7 @@ Expected:
    - click **Refresh Summary** and verify summary text updates
    - verify menu status line shows badge like `🟢 R1 L3 D0`
    - click **Starred > Start/Restart Starred** (or any group action)
+   - click one entry under **Items** and run **Start/Stop/Restart/Enable/Disable**
 5. Wait ~1-3 poll cycles (or click **Refresh** for immediate apply).
 6. (Optional) inspect helper queue:
    ```bash
@@ -297,3 +299,4 @@ Expected:
 - Menu bar helper can queue batch actions without opening LaunchPad window controls.
 - LaunchPad auto-poll (or manual refresh) drains and executes queued actions via shared service layer.
 - Summary refresh reflects current helper snapshot state and updates running/loaded/disabled badge.
+- Items submenu reflects top-N snapshot items and supports per-item action queueing.

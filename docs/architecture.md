@@ -133,6 +133,7 @@ Slint provides a minimal desktop UI:
 - `src/bin/quicklaunch_menubar.rs` (macOS only)
   - native tray/menu-bar shell for QuickLaunch controls
   - derives runtime badge (`running/loaded/disabled`) from helper list snapshot
+  - renders top-N per-item action menus from helper snapshot
   - reads summary via helper bridge and enqueues starred/group actions
   - actions are applied by LaunchPad auto-poll loop through shared service pipeline
 
