@@ -1,0 +1,52 @@
+import { Button, HorizontalBox } from "std-widgets.slint";
+
+export component ActionBar inherits HorizontalBox {
+    in-out property <bool> busy: false;
+    in-out property <bool> can_trigger: false;
+    in-out property <bool> can_delete: false;
+    callback trigger_requested(string);
+    callback delete_requested();
+
+    spacing: 8px;
+
+    Button {
+        text: "Start";
+        enabled: root.can_trigger && !root.busy;
+        clicked => { root.trigger_requested("start"); }
+    }
+    Button {
+        text: "Stop";
+        enabled: root.can_trigger && !root.busy;
+        clicked => { root.trigger_requested("stop"); }
+    }
+    Button {
+        text: "Kickstart";
+        enabled: root.can_trigger && !root.busy;
+        clicked => { root.trigger_requested("kickstart"); }
+    }
+    Button {
+        text: "Enable";
+        enabled: root.can_trigger && !root.busy;
+        clicked => { root.trigger_requested("enable"); }
+    }
+    Button {
+        text: "Disable";
+        enabled: root.can_trigger && !root.busy;
+        clicked => { root.trigger_requested("disable"); }
+    }
+    Button {
+        text: "Load";
+        enabled: root.can_trigger && !root.busy;
+        clicked => { root.trigger_requested("load"); }
+    }
+    Button {
+        text: "Unload";
+        enabled: root.can_trigger && !root.busy;
+        clicked => { root.trigger_requested("unload"); }
+    }
+    Button {
+        text: "Delete";
+        enabled: root.can_delete && !root.busy;
+        clicked => { root.delete_requested(); }
+    }
+}

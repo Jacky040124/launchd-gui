@@ -76,7 +76,9 @@ src/
   service/         # business orchestration (list/trigger/delete)
   main.rs          # Slint UI wiring + callbacks
 ui/
-  main.slint       # minimalist UI
+  main.slint       # composition root UI
+  components/      # reusable raycast-style sections
+  theme/           # shared visual tokens
 tests/
   *_tests.rs       # integration tests with mocks
 ```

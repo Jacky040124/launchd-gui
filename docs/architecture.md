@@ -86,7 +86,7 @@ Adapters are trait-based, so tests can inject mock behavior.
 - `quicklaunch_service.rs`
   - prepares and syncs QuickLaunch item set (supports starred-only + max-count + group-by policy)
 
-## UI Layer (`ui/main.slint` + `src/main.rs`)
+## UI Layer (`ui/main.slint` + `ui/components/*` + `src/main.rs`)
 
 Slint provides a minimal desktop UI:
 
@@ -98,11 +98,19 @@ Slint provides a minimal desktop UI:
 - real-time diagnostics panel for editor changes
 - new user/global plist creation flow
 - built-in recent log viewer for selected job
+- history/live log mode toggle with configurable stream seconds
 - AI suggestion panel for natural-language launchd guidance
 - command palette for keyboard-first actions
 - copy details action
 - action buttons
 - status message area
+
+`ui/main.slint` now acts as composition root, while reusable sections are split into `ui/components/*`:
+- `top_command_bar.slint`
+- `search_scope_bar.slint`
+- `status_filter_bar.slint`
+- `jobs_workspace.slint`
+- `action_bar.slint`
 
 `main.rs` wires UI callbacks into service calls and refresh logic.
 

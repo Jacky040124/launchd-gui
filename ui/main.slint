@@ -1,5 +1,10 @@
 import { Button, HorizontalBox, LineEdit, ListView, VerticalBox } from "std-widgets.slint";
 import { RaycastTheme } from "theme/raycast_tokens.slint";
+import { TopCommandBar } from "components/top_command_bar.slint";
+import { SearchScopeBar } from "components/search_scope_bar.slint";
+import { StatusFilterBar } from "components/status_filter_bar.slint";
+import { JobsWorkspace } from "components/jobs_workspace.slint";
+import { ActionBar } from "components/action_bar.slint";
 
 export component MainWindow inherits Window {
     in-out property <[string]> job_lines: [];
@@ -115,305 +120,76 @@ export component MainWindow inherits Window {
         spacing: 12px;
         padding: 14px;
 
-        HorizontalBox {
-            spacing: 10px;
-            Button {
-                text: "Refresh";
-                enabled: !root.busy;
-                clicked => { root.refresh_requested(); }
-            }
-            LineEdit {
-                width: 380px;
-                enabled: !root.busy;
-                text <=> root.command_query;
-                placeholder-text: "Command palette: refresh / enable / new user / save / logs";
-                edited(value) => { root.command_query_changed(value); }
-                accepted => { root.command_requested(); }
-            }
-            Button {
-                text: "Run Command";
-                enabled: !root.busy;
-                clicked => { root.command_requested(); }
-            }
-            Text {
-                text: root.busy ? "LaunchPad · refreshing jobs..." : "LaunchPad · launchd control center";
-                vertical-alignment: center;
-                font-size: 15px;
-                color: RaycastTheme.text-primary;
-            }
+        TopCommandBar {
+            busy: root.busy;
+            command_query <=> root.command_query;
+            refresh_requested => { root.refresh_requested(); }
+            command_query_changed(value) => { root.command_query_changed(value); }
+            command_requested => { root.command_requested(); }
         }
 
-        HorizontalBox {
-            spacing: 8px;
-            LineEdit {
-                width: 300px;
-                enabled: !root.busy;
-                text <=> root.query_text;
-                placeholder-text: "Search label or path";
-                edited(text) => { root.query_changed(text); }
-                accepted => { root.query_changed(root.query_text); }
-            }
-            Button {
-                text: root.show_starred_only ? "★ Starred only" : "☆ Starred only";
-                enabled: !root.busy;
-                clicked => { root.star_filter_toggled(!root.show_starred_only); }
-            }
-            Button {
-                text: "All";
-                enabled: !root.busy;
-                clicked => { root.clear_filters_requested(); }
-            }
-            Button {
-                text: "User Agents";
-                enabled: !root.busy;
-                clicked => { root.scope_filter_requested("user-agent"); }
-            }
-            Button {
-                text: "Global Agents";
-                enabled: !root.busy;
-                clicked => { root.scope_filter_requested("global-agent"); }
-            }
-            Button {
-                text: "Daemons";
-                enabled: !root.busy;
-                clicked => { root.scope_filter_requested("system-daemon"); }
-            }
-            Text {
-                text: "Filter: " + root.active_filter_text;
-                vertical-alignment: center;
-                color: RaycastTheme.text-secondary;
-            }
+        SearchScopeBar {
+            busy: root.busy;
+            query_text <=> root.query_text;
+            show_starred_only: root.show_starred_only;
+            active_filter_text: root.active_filter_text;
+            query_changed(value) => { root.query_changed(value); }
+            star_filter_toggled(enabled) => { root.star_filter_toggled(enabled); }
+            clear_filters_requested => { root.clear_filters_requested(); }
+            scope_filter_requested(scope) => { root.scope_filter_requested(scope); }
         }
 
-        HorizontalBox {
-            spacing: 8px;
-            Button {
-                text: root.status_filter_text;
-                enabled: !root.busy;
-                clicked => { root.status_filter_requested("any"); }
-            }
-            Button {
-                text: "Running";
-                enabled: !root.busy;
-                clicked => { root.status_filter_requested("running"); }
-            }
-            Button {
-                text: "Loaded";
-                enabled: !root.busy;
-                clicked => { root.status_filter_requested("loaded"); }
-            }
-            Button {
-                text: "Disabled";
-                enabled: !root.busy;
-                clicked => { root.status_filter_requested("disabled"); }
-            }
-            Button {
-                text: "Unknown";
-                enabled: !root.busy;
-                clicked => { root.status_filter_requested("unknown"); }
-            }
-            Button {
-                text: root.disabled_filter_text;
-                enabled: !root.busy;
-                clicked => { root.cycle_disabled_filter_requested(); }
-            }
-            Button {
-                text: root.run_at_load_filter_text;
-                enabled: !root.busy;
-                clicked => { root.cycle_run_at_load_filter_requested(); }
-            }
-            Button {
-                text: root.keep_alive_filter_text;
-                enabled: !root.busy;
-                clicked => { root.cycle_keep_alive_filter_requested(); }
-            }
-            Button {
-                text: root.error_filter_text;
-                enabled: !root.busy;
-                clicked => { root.cycle_error_filter_requested(); }
-            }
+        StatusFilterBar {
+            busy: root.busy;
+            status_filter_text: root.status_filter_text;
+            disabled_filter_text: root.disabled_filter_text;
+            run_at_load_filter_text: root.run_at_load_filter_text;
+            keep_alive_filter_text: root.keep_alive_filter_text;
+            error_filter_text: root.error_filter_text;
+            status_filter_requested(status) => { root.status_filter_requested(status); }
+            cycle_disabled_filter_requested => { root.cycle_disabled_filter_requested(); }
+            cycle_run_at_load_filter_requested => { root.cycle_run_at_load_filter_requested(); }
+            cycle_keep_alive_filter_requested => { root.cycle_keep_alive_filter_requested(); }
+            cycle_error_filter_requested => { root.cycle_error_filter_requested(); }
         }
 
-        HorizontalBox {
-            spacing: 12px;
-
-            Rectangle {
-                border-width: 1px;
-                border-color: RaycastTheme.border;
-                border-radius: 10px;
-                background: RaycastTheme.surface;
-                horizontal-stretch: 0.9;
-                clip: true;
-
-                VerticalBox {
-                    padding: 8px;
-                    spacing: 8px;
-
-                    Text {
-                        text: "Jobs";
-                        font-weight: 700;
-                        color: RaycastTheme.text-primary;
-                    }
-
-                    Rectangle {
-                        border-radius: 8px;
-                        border-width: 1px;
-                        border-color: #eaecf0;
-                        clip: true;
-                        vertical-stretch: 1;
-
-                        ListView {
-                            for line[index] in root.job_lines : Rectangle {
-                                height: 40px;
-                                border-radius: 6px;
-                                x: 4px;
-                                width: parent.width - 8px;
-                                background: root.selected_job_row == index ? #e0ebff : #ffffff;
-                                animate background { duration: 160ms; easing: ease-in-out; }
-
-                                Text {
-                                    text: line;
-                                    x: 10px;
-                                    y: (parent.height - self.height) / 2;
-                                    color: root.selected_job_row == index ? #12326b : #344054;
-                                    font-weight: root.selected_job_row == index ? 600 : 400;
-                                }
-
-                                TouchArea {
-                                    clicked => { root.select_job(index); }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                border-width: 1px;
-                border-color: RaycastTheme.border;
-                border-radius: 10px;
-                background: RaycastTheme.surface;
-                horizontal-stretch: 1.1;
-
-                VerticalBox {
-                    padding: 12px;
-                    spacing: 8px;
-                    Text {
-                        text: "Selected Job";
-                        font-weight: 700;
-                        color: RaycastTheme.text-primary;
-                    }
-
-                    Rectangle {
-                        border-radius: 8px;
-                        border-width: 1px;
-                        border-color: #eaecf0;
-                        background: #f8faff;
-                        VerticalBox {
-                            padding: 10px;
-                            spacing: 4px;
-                            Text { text: "Label: " + root.detail_label; color: #101828; }
-                            Text { text: "Scope: " + root.detail_scope; color: #344054; }
-                            Text { text: "Status: " + root.detail_status; color: #344054; }
-                            Text { text: "Path: " + root.detail_path; color: #344054; wrap: word-wrap; }
-                            Text { text: "RunAtLoad: " + root.detail_run_at_load; color: #344054; }
-                            Text { text: "KeepAlive: " + root.detail_keep_alive; color: #344054; }
-                            Text { text: "Disabled key: " + root.detail_disabled_key; color: #344054; }
-                            Text { text: root.detail_error; color: #b42318; wrap: word-wrap; }
-                        }
-                    }
-
-                    HorizontalBox {
-                        spacing: 8px;
-                        Button {
-                            text: root.is_starred ? "Unstar" : "Star";
-                            enabled: !root.busy;
-                            clicked => { root.toggle_star_requested(); }
-                        }
-                        Button {
-                            text: "Copy Details";
-                            enabled: !root.busy;
-                            clicked => { root.copy_detail_requested(); }
-                        }
-                        Button {
-                            text: root.advanced_detail_visible ? "Hide Advanced" : "Show Advanced";
-                            enabled: !root.busy;
-                            clicked => { root.toggle_advanced_requested(); }
-                        }
-                    }
-
-                    Rectangle {
-                        border-radius: 8px;
-                        border-width: 1px;
-                        border-color: #eaecf0;
-                        background: #fcfcfd;
-                        clip: true;
-                        height: root.advanced_detail_visible ? 116px : 0px;
-                        opacity: root.advanced_detail_visible ? 1 : 0;
-                        animate height, opacity { duration: 180ms; easing: ease-in-out; }
-
-                        VerticalBox {
-                            padding: 10px;
-                            spacing: 4px;
-                            Text { text: "PID: " + root.detail_pid; color: #344054; }
-                            Text { text: "Last Exit: " + root.detail_last_exit; color: #344054; }
-                            Text { text: "Last Run: " + root.detail_last_run; color: #344054; }
-                            Text { text: root.detail_runtime_hint; color: #475467; wrap: word-wrap; }
-                        }
-                    }
-                }
-            }
+        JobsWorkspace {
+            busy: root.busy;
+            job_lines: root.job_lines;
+            selected_job_row: root.selected_job_row;
+            detail_label: root.detail_label;
+            detail_scope: root.detail_scope;
+            detail_status: root.detail_status;
+            detail_path: root.detail_path;
+            detail_run_at_load: root.detail_run_at_load;
+            detail_keep_alive: root.detail_keep_alive;
+            detail_disabled_key: root.detail_disabled_key;
+            detail_pid: root.detail_pid;
+            detail_last_exit: root.detail_last_exit;
+            detail_last_run: root.detail_last_run;
+            detail_runtime_hint: root.detail_runtime_hint;
+            detail_error: root.detail_error;
+            is_starred: root.is_starred;
+            advanced_detail_visible: root.advanced_detail_visible;
+            select_job(index) => { root.select_job(index); }
+            toggle_star_requested => { root.toggle_star_requested(); }
+            copy_detail_requested => { root.copy_detail_requested(); }
+            toggle_advanced_requested => { root.toggle_advanced_requested(); }
         }
 
-        HorizontalBox {
-            spacing: 8px;
-            Button {
-                text: "Start";
-                enabled: root.can_trigger && !root.busy;
-                clicked => { root.trigger_requested("start"); }
-            }
-            Button {
-                text: "Stop";
-                enabled: root.can_trigger && !root.busy;
-                clicked => { root.trigger_requested("stop"); }
-            }
-            Button {
-                text: "Kickstart";
-                enabled: root.can_trigger && !root.busy;
-                clicked => { root.trigger_requested("kickstart"); }
-            }
-            Button {
-                text: "Enable";
-                enabled: root.can_trigger && !root.busy;
-                clicked => { root.trigger_requested("enable"); }
-            }
-            Button {
-                text: "Disable";
-                enabled: root.can_trigger && !root.busy;
-                clicked => { root.trigger_requested("disable"); }
-            }
-            Button {
-                text: "Load";
-                enabled: root.can_trigger && !root.busy;
-                clicked => { root.trigger_requested("load"); }
-            }
-            Button {
-                text: "Unload";
-                enabled: root.can_trigger && !root.busy;
-                clicked => { root.trigger_requested("unload"); }
-            }
-            Button {
-                text: "Delete";
-                enabled: root.can_delete && !root.busy;
-                clicked => { root.delete_requested(); }
-            }
+        ActionBar {
+            busy: root.busy;
+            can_trigger: root.can_trigger;
+            can_delete: root.can_delete;
+            trigger_requested(action) => { root.trigger_requested(action); }
+            delete_requested => { root.delete_requested(); }
         }
 
         Rectangle {
             border-width: 1px;
-            border-color: #d0d5dd;
+            border-color: RaycastTheme.border;
             border-radius: 10px;
-            background: #ffffff;
+            background: RaycastTheme.surface;
             clip: true;
 
             VerticalBox {
@@ -425,11 +201,11 @@ export component MainWindow inherits Window {
                     Text {
                         text: "Plist Editor (Standard + XML)";
                         font-weight: 700;
-                        color: #182230;
+                        color: RaycastTheme.text-primary;
                     }
                     Text {
                         text: root.editor_target_text;
-                        color: #475467;
+                        color: RaycastTheme.text-secondary;
                     }
                     Button {
                         text: "New User Job";
@@ -531,7 +307,7 @@ export component MainWindow inherits Window {
 
                 Rectangle {
                     border-width: 1px;
-                    border-color: #eaecf0;
+                    border-color: RaycastTheme.border;
                     border-radius: 8px;
                     background: RaycastTheme.surface-muted;
                     VerticalBox {
@@ -546,7 +322,7 @@ export component MainWindow inherits Window {
 
                 Rectangle {
                     border-width: 1px;
-                    border-color: #fec84b;
+                    border-color: RaycastTheme.border-warning;
                     border-radius: 8px;
                     background: RaycastTheme.warning-bg;
                     VerticalBox {
@@ -566,9 +342,9 @@ export component MainWindow inherits Window {
 
                 Rectangle {
                     border-width: 1px;
-                    border-color: #d0d5dd;
+                    border-color: RaycastTheme.border;
                     border-radius: 8px;
-                    background: #f8f9fc;
+                    background: RaycastTheme.surface-muted;
                     VerticalBox {
                         padding: 8px;
                         spacing: 6px;
@@ -576,7 +352,7 @@ export component MainWindow inherits Window {
                             spacing: 8px;
                             Text {
                                 text: "Logs";
-                                color: #1d2939;
+                                color: RaycastTheme.text-primary;
                                 font-weight: 600;
                             }
                             Button {
@@ -614,16 +390,16 @@ export component MainWindow inherits Window {
                         Text {
                             text: root.log_view_text;
                             wrap: word-wrap;
-                            color: #344054;
+                            color: RaycastTheme.text-secondary;
                         }
                     }
                 }
 
                 Rectangle {
                     border-width: 1px;
-                    border-color: #b2ddff;
+                    border-color: RaycastTheme.border-info;
                     border-radius: 8px;
-                    background: #f5faff;
+                    background: RaycastTheme.surface-info;
                     VerticalBox {
                         padding: 8px;
                         spacing: 6px;
@@ -661,21 +437,21 @@ export component MainWindow inherits Window {
                         Text {
                             text: root.ai_response;
                             wrap: word-wrap;
-                            color: #175cd3;
+                            color: RaycastTheme.accent;
                         }
                         Text {
                             text: root.ai_diff_preview;
                             wrap: word-wrap;
-                            color: #344054;
+                            color: RaycastTheme.text-secondary;
                         }
                     }
                 }
 
                 Rectangle {
                     border-width: 1px;
-                    border-color: #d0d5dd;
+                    border-color: RaycastTheme.border;
                     border-radius: 8px;
-                    background: #ffffff;
+                    background: RaycastTheme.surface;
                     VerticalBox {
                         padding: 8px;
                         spacing: 6px;
@@ -691,25 +467,25 @@ export component MainWindow inherits Window {
                             Text {
                                 text: "Key Panel · " + root.key_panel_count_text;
                                 vertical-alignment: center;
-                                color: #475467;
+                                color: RaycastTheme.text-secondary;
                             }
                         }
                         Rectangle {
                             border-width: 1px;
-                            border-color: #eaecf0;
+                            border-color: RaycastTheme.border;
                             border-radius: 8px;
-                            background: #fcfcfd;
+                            background: RaycastTheme.surface-muted;
                             clip: true;
                             height: 170px;
                             ListView {
                                 for line[index] in root.key_panel_lines : Rectangle {
                                     height: 34px;
-                                    background: #ffffff;
+                                    background: RaycastTheme.surface;
                                     Text {
                                         text: line;
                                         x: 8px;
                                         y: (parent.height - self.height) / 2;
-                                        color: #344054;
+                                        color: RaycastTheme.text-secondary;
                                     }
                                     TouchArea {
                                         clicked => { root.key_panel_add_requested(index); }
@@ -725,9 +501,9 @@ export component MainWindow inherits Window {
         Rectangle {
             visible: root.confirm_delete_visible;
             border-width: 1px;
-            border-color: #fecdca;
+            border-color: RaycastTheme.border-danger;
             border-radius: 8px;
-            background: #fffbfa;
+            background: RaycastTheme.danger-bg;
             opacity: root.confirm_delete_visible ? 1 : 0;
             animate opacity { duration: 140ms; easing: ease-in-out; }
 
@@ -736,7 +512,7 @@ export component MainWindow inherits Window {
                 spacing: 6px;
                 Text {
                     text: "Delete '" + root.confirm_delete_label + "' ?";
-                    color: #b42318;
+                    color: RaycastTheme.danger-text;
                     font-weight: 600;
                 }
                 Text {
@@ -761,7 +537,7 @@ export component MainWindow inherits Window {
 
         Rectangle {
             border-width: 1px;
-            border-color: #ececec;
+            border-color: RaycastTheme.border;
             border-radius: 8px;
             background: RaycastTheme.surface;
             VerticalBox {
