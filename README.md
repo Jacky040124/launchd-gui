@@ -55,7 +55,7 @@ LaunchPad currently includes these core capabilities:
    - patch diff preview + explicit confirm before applying edits to editor
    - provider HTTP calls for OpenAI-compatible, Anthropic, and Google (configurable endpoint/model)
 11. **Command palette (Raycast-style interaction)**:
-   - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `save load`, `save load enable`, `logs`, `logs live`, `logs history`)
+   - run commands from a single input (`refresh`, `start`, `stop`, `restart`, `enable`, `new user`, `save`, `save load`, `save load enable`, `logs`, `logs live`, `logs history`)
    - batch starred controls (`start starred`, `stop starred`, `enable starred`, etc.)
    - AI provider commands (`providers`, `provider <name>`)
 
@@ -120,6 +120,7 @@ Helper command queue is also supported for external menu integrations:
 ```bash
 cargo run --bin quicklaunch_helper -- --enqueue-action start id-1,id-2
 cargo run --bin quicklaunch_helper -- --enqueue-group-action user-agent stop
+cargo run --bin quicklaunch_helper -- --enqueue-group-action global-agent restart
 cargo run --bin quicklaunch_helper -- --enqueue-starred-action disable
 cargo run --bin quicklaunch_helper -- --drain-actions
 ```

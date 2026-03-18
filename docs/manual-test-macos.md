@@ -281,7 +281,7 @@ Expected:
    ```
 4. In menu bar app:
    - click **Refresh Summary** and verify summary text updates
-   - click **Starred > Start Starred** (or any group action)
+   - click **Starred > Start/Restart Starred** (or any group action)
 5. Verify target services change state (no need to click main window action buttons).
 6. (Optional) if using queue mode for debugging, inspect helper queue:
    ```bash

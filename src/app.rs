@@ -410,7 +410,7 @@ impl AppController {
             "refresh" => self.refresh(ui),
             "start" => self.trigger(ui, TriggerAction::Start),
             "stop" => self.trigger(ui, TriggerAction::Stop),
-            "kickstart" => self.trigger(ui, TriggerAction::Kickstart),
+            "kickstart" | "restart" => self.trigger(ui, TriggerAction::Kickstart),
             "enable" => self.trigger(ui, TriggerAction::Enable),
             "disable" => self.trigger(ui, TriggerAction::Disable),
             "load" => self.trigger(ui, TriggerAction::Load),
@@ -443,7 +443,7 @@ impl AppController {
             _ => {
                 ui.set_status_message(
                     format!(
-                        "Unknown command '{}'. Try: refresh/start/stop/enable/load/new user/save/logs/logs live/start starred",
+                        "Unknown command '{}'. Try: refresh/start/stop/restart/enable/load/new user/save/logs/logs live/start starred",
                         normalized
                     )
                     .into(),

@@ -26,10 +26,12 @@ mod macos {
         let starred = Submenu::new("Starred", true);
         let starred_start = MenuItem::new("Start Starred", true, None);
         let starred_stop = MenuItem::new("Stop Starred", true, None);
+        let starred_restart = MenuItem::new("Restart Starred", true, None);
         let starred_enable = MenuItem::new("Enable Starred", true, None);
         let starred_disable = MenuItem::new("Disable Starred", true, None);
         starred.append(&starred_start)?;
         starred.append(&starred_stop)?;
+        starred.append(&starred_restart)?;
         starred.append(&starred_enable)?;
         starred.append(&starred_disable)?;
         menu.append(&starred)?;
@@ -37,12 +39,16 @@ mod macos {
         let groups = Submenu::new("Groups", true);
         let user_start = MenuItem::new("Start user-agent", true, None);
         let user_stop = MenuItem::new("Stop user-agent", true, None);
+        let user_restart = MenuItem::new("Restart user-agent", true, None);
         let global_start = MenuItem::new("Start global-agent", true, None);
         let global_stop = MenuItem::new("Stop global-agent", true, None);
+        let global_restart = MenuItem::new("Restart global-agent", true, None);
         groups.append(&user_start)?;
         groups.append(&user_stop)?;
+        groups.append(&user_restart)?;
         groups.append(&global_start)?;
         groups.append(&global_stop)?;
+        groups.append(&global_restart)?;
         menu.append(&groups)?;
 
         menu.append(&PredefinedMenuItem::separator())?;
@@ -91,6 +97,8 @@ mod macos {
                         execute_starred_action(helper.as_str(), "start", uid)
                     } else if event.id == starred_stop.id() {
                         execute_starred_action(helper.as_str(), "stop", uid)
+                    } else if event.id == starred_restart.id() {
+                        execute_starred_action(helper.as_str(), "restart", uid)
                     } else if event.id == starred_enable.id() {
                         execute_starred_action(helper.as_str(), "enable", uid)
                     } else if event.id == starred_disable.id() {
@@ -99,10 +107,14 @@ mod macos {
                         execute_group_action(helper.as_str(), "user-agent", "start", uid)
                     } else if event.id == user_stop.id() {
                         execute_group_action(helper.as_str(), "user-agent", "stop", uid)
+                    } else if event.id == user_restart.id() {
+                        execute_group_action(helper.as_str(), "user-agent", "restart", uid)
                     } else if event.id == global_start.id() {
                         execute_group_action(helper.as_str(), "global-agent", "start", uid)
                     } else if event.id == global_stop.id() {
                         execute_group_action(helper.as_str(), "global-agent", "stop", uid)
+                    } else if event.id == global_restart.id() {
+                        execute_group_action(helper.as_str(), "global-agent", "restart", uid)
                     } else {
                         Ok("No action".to_string())
                     };

@@ -184,7 +184,7 @@ fn collect_starred_job_ids(items: &[QuickLaunchItem]) -> Vec<String> {
 fn is_supported_action(action: &str) -> bool {
     matches!(
         action,
-        "start" | "stop" | "kickstart" | "enable" | "disable" | "load" | "unload"
+        "start" | "stop" | "kickstart" | "restart" | "enable" | "disable" | "load" | "unload"
     )
 }
 
@@ -193,7 +193,7 @@ fn enqueue_action_ids(
     action: &str,
     job_ids: Vec<String>,
 ) -> Result<usize, Box<dyn std::error::Error>> {
-    let normalized_action = action.trim().to_ascii_lowercase();
+    let normalized_action = normalize_action(action);
     if normalized_action.is_empty() {
         return Err("action is required".into());
     }
@@ -211,6 +211,15 @@ fn enqueue_action_ids(
     });
     write_actions(actions_path, &queued)?;
     Ok(job_ids.len())
+}
+
+fn normalize_action(action: &str) -> String {
+    let normalized = action.trim().to_ascii_lowercase();
+    if normalized == "restart" {
+        "kickstart".to_string()
+    } else {
+        normalized
+    }
 }
 
 fn enqueue_action(
@@ -246,8 +255,8 @@ mod tests {
 
     use super::{
         collect_job_ids_by_group, collect_starred_job_ids, drain_actions, enqueue_action,
-        enqueue_action_ids, parse_items_payload, parse_job_ids_csv, resolve_actions_path,
-        resolve_state_path, summarize_groups,
+        enqueue_action_ids, normalize_action, parse_items_payload, parse_job_ids_csv,
+        resolve_actions_path, resolve_state_path, summarize_groups,
     };
 
     #[test]
@@ -363,8 +372,14 @@ mod tests {
     fn enqueue_action_ids_rejects_unsupported_action() {
         let temp = TempDir::new().expect("temp");
         let path = temp.path().join("actions.json");
-        let err = enqueue_action_ids(&path, "restart", vec!["id-1".to_string()])
+        let err = enqueue_action_ids(&path, "reboot", vec!["id-1".to_string()])
             .expect_err("unsupported action should fail");
         assert!(err.to_string().contains("unsupported action"));
+    }
+
+    #[test]
+    fn normalize_action_maps_restart_to_kickstart() {
+        assert_eq!(normalize_action("restart"), "kickstart");
+        assert_eq!(normalize_action("start"), "start");
     }
 }
