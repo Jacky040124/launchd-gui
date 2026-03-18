@@ -7,6 +7,7 @@ use launchpad::domain::job::{JobCapabilities, JobScope, JobSummary};
 use launchpad::domain::status::JobStatus;
 use launchpad::error::{AppError, AppResult};
 use launchpad::service::action_service::ActionService;
+use tempfile::NamedTempFile;
 
 #[derive(Debug, Default)]
 struct MockLaunchctl {
@@ -52,7 +53,35 @@ impl LaunchctlClient for MockLaunchctl {
         Ok(())
     }
 
-    fn bootout(&self, _domain: &str, _path: &str) -> AppResult<()> {
+    fn enable(&self, target: &str) -> AppResult<()> {
+        self.calls
+            .lock()
+            .expect("lock calls")
+            .push(format!("enable:{target}"));
+        Ok(())
+    }
+
+    fn disable(&self, target: &str) -> AppResult<()> {
+        self.calls
+            .lock()
+            .expect("lock calls")
+            .push(format!("disable:{target}"));
+        Ok(())
+    }
+
+    fn bootstrap(&self, domain: &str, path: &str) -> AppResult<()> {
+        self.calls
+            .lock()
+            .expect("lock calls")
+            .push(format!("bootstrap:{domain}:{path}"));
+        Ok(())
+    }
+
+    fn bootout(&self, domain: &str, path: &str) -> AppResult<()> {
+        self.calls
+            .lock()
+            .expect("lock calls")
+            .push(format!("bootout:{domain}:{path}"));
         Ok(())
     }
 }
@@ -95,6 +124,52 @@ fn execute_stop_and_kickstart_are_forwarded() {
 }
 
 #[test]
+fn execute_enable_disable_and_load_are_forwarded() {
+    let launchctl = Arc::new(MockLaunchctl::default());
+    let service = ActionService::new(launchctl.clone(), 501);
+    let temp_plist = NamedTempFile::new().expect("temp plist");
+    let mut job = job_fixture(true);
+    job.path = temp_plist.path().to_path_buf();
+
+    service
+        .execute(&job, TriggerAction::Enable)
+        .expect("enable should succeed");
+    service
+        .execute(&job, TriggerAction::Disable)
+        .expect("disable should succeed");
+    service
+        .execute(&job, TriggerAction::Load)
+        .expect("load should succeed");
+
+    let calls = launchctl.take_calls();
+    assert_eq!(
+        calls,
+        vec![
+            "enable:gui/501/com.demo.agent".to_string(),
+            "disable:gui/501/com.demo.agent".to_string(),
+            format!("bootstrap:gui/501:{}", temp_plist.path().to_string_lossy())
+        ]
+    );
+}
+
+#[test]
+fn execute_unload_is_forwarded_to_bootout() {
+    let launchctl = Arc::new(MockLaunchctl::default());
+    let service = ActionService::new(launchctl.clone(), 501);
+    let job = job_fixture(true);
+
+    service
+        .execute(&job, TriggerAction::Unload)
+        .expect("unload should succeed");
+
+    let calls = launchctl.take_calls();
+    assert_eq!(
+        calls,
+        vec!["bootout:gui/501:/tmp/com.demo.agent.plist".to_string()]
+    );
+}
+
+#[test]
 fn execute_rejects_when_trigger_disabled() {
     let launchctl = Arc::new(MockLaunchctl::default());
     let service = ActionService::new(launchctl.clone(), 501);
@@ -121,6 +196,7 @@ fn job_fixture(can_trigger: bool) -> JobSummary {
         scope: JobScope::UserAgent,
         status: JobStatus::Loaded,
         is_starred: false,
+        metadata: launchpad::domain::job::JobMetadata::default(),
         capabilities: JobCapabilities {
             can_trigger,
             can_delete: true,

@@ -11,6 +11,9 @@ pub trait LaunchctlClient: Send + Sync {
     fn start(&self, target: &str) -> AppResult<()>;
     fn stop(&self, target: &str) -> AppResult<()>;
     fn kickstart(&self, target: &str) -> AppResult<()>;
+    fn enable(&self, target: &str) -> AppResult<()>;
+    fn disable(&self, target: &str) -> AppResult<()>;
+    fn bootstrap(&self, domain: &str, path: &str) -> AppResult<()>;
     fn bootout(&self, domain: &str, path: &str) -> AppResult<()>;
 }
 
@@ -59,6 +62,18 @@ impl LaunchctlClient for SystemLaunchctlClient {
 
     fn kickstart(&self, target: &str) -> AppResult<()> {
         self.run_launchctl(&["kickstart", "-k", target]).map(|_| ())
+    }
+
+    fn enable(&self, target: &str) -> AppResult<()> {
+        self.run_launchctl(&["enable", target]).map(|_| ())
+    }
+
+    fn disable(&self, target: &str) -> AppResult<()> {
+        self.run_launchctl(&["disable", target]).map(|_| ())
+    }
+
+    fn bootstrap(&self, domain: &str, path: &str) -> AppResult<()> {
+        self.run_launchctl(&["bootstrap", domain, path]).map(|_| ())
     }
 
     fn bootout(&self, domain: &str, path: &str) -> AppResult<()> {

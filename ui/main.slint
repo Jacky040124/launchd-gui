@@ -8,10 +8,18 @@ export component MainWindow inherits Window {
     in-out property <string> confirm_delete_label: "";
     in-out property <string> query_text: "";
     in-out property <string> active_filter_text: "all scopes";
+    in-out property <string> status_filter_text: "Status:any";
+    in-out property <string> disabled_filter_text: "Disabled:any";
+    in-out property <string> run_at_load_filter_text: "RunAtLoad:any";
+    in-out property <string> keep_alive_filter_text: "KeepAlive:any";
+    in-out property <string> error_filter_text: "HasError:any";
     in-out property <string> detail_label: "";
     in-out property <string> detail_scope: "";
     in-out property <string> detail_status: "";
     in-out property <string> detail_path: "";
+    in-out property <string> detail_run_at_load: "";
+    in-out property <string> detail_keep_alive: "";
+    in-out property <string> detail_disabled_key: "";
     in-out property <string> detail_pid: "";
     in-out property <string> detail_last_exit: "";
     in-out property <string> detail_last_run: "";
@@ -32,6 +40,11 @@ export component MainWindow inherits Window {
     callback cancel_delete();
     callback query_changed(string);
     callback scope_filter_requested(string);
+    callback status_filter_requested(string);
+    callback cycle_disabled_filter_requested();
+    callback cycle_run_at_load_filter_requested();
+    callback cycle_keep_alive_filter_requested();
+    callback cycle_error_filter_requested();
     callback clear_filters_requested();
     callback toggle_star_requested();
     callback copy_detail_requested();
@@ -100,6 +113,55 @@ export component MainWindow inherits Window {
                 text: "Filter: " + root.active_filter_text;
                 vertical-alignment: center;
                 color: #475467;
+            }
+        }
+
+        HorizontalBox {
+            spacing: 8px;
+            Button {
+                text: root.status_filter_text;
+                enabled: !root.busy;
+                clicked => { root.status_filter_requested("any"); }
+            }
+            Button {
+                text: "Running";
+                enabled: !root.busy;
+                clicked => { root.status_filter_requested("running"); }
+            }
+            Button {
+                text: "Loaded";
+                enabled: !root.busy;
+                clicked => { root.status_filter_requested("loaded"); }
+            }
+            Button {
+                text: "Disabled";
+                enabled: !root.busy;
+                clicked => { root.status_filter_requested("disabled"); }
+            }
+            Button {
+                text: "Unknown";
+                enabled: !root.busy;
+                clicked => { root.status_filter_requested("unknown"); }
+            }
+            Button {
+                text: root.disabled_filter_text;
+                enabled: !root.busy;
+                clicked => { root.cycle_disabled_filter_requested(); }
+            }
+            Button {
+                text: root.run_at_load_filter_text;
+                enabled: !root.busy;
+                clicked => { root.cycle_run_at_load_filter_requested(); }
+            }
+            Button {
+                text: root.keep_alive_filter_text;
+                enabled: !root.busy;
+                clicked => { root.cycle_keep_alive_filter_requested(); }
+            }
+            Button {
+                text: root.error_filter_text;
+                enabled: !root.busy;
+                clicked => { root.cycle_error_filter_requested(); }
             }
         }
 
@@ -185,6 +247,9 @@ export component MainWindow inherits Window {
                             Text { text: "Scope: " + root.detail_scope; color: #344054; }
                             Text { text: "Status: " + root.detail_status; color: #344054; }
                             Text { text: "Path: " + root.detail_path; color: #344054; wrap: word-wrap; }
+                            Text { text: "RunAtLoad: " + root.detail_run_at_load; color: #344054; }
+                            Text { text: "KeepAlive: " + root.detail_keep_alive; color: #344054; }
+                            Text { text: "Disabled key: " + root.detail_disabled_key; color: #344054; }
                             Text { text: root.detail_error; color: #b42318; wrap: word-wrap; }
                         }
                     }
@@ -247,6 +312,26 @@ export component MainWindow inherits Window {
                 text: "Kickstart";
                 enabled: root.can_trigger && !root.busy;
                 clicked => { root.trigger_requested("kickstart"); }
+            }
+            Button {
+                text: "Enable";
+                enabled: root.can_trigger && !root.busy;
+                clicked => { root.trigger_requested("enable"); }
+            }
+            Button {
+                text: "Disable";
+                enabled: root.can_trigger && !root.busy;
+                clicked => { root.trigger_requested("disable"); }
+            }
+            Button {
+                text: "Load";
+                enabled: root.can_trigger && !root.busy;
+                clicked => { root.trigger_requested("load"); }
+            }
+            Button {
+                text: "Unload";
+                enabled: root.can_trigger && !root.busy;
+                clicked => { root.trigger_requested("unload"); }
             }
             Button {
                 text: "Delete";

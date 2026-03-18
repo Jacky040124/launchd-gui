@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use launchpad::adapter::fs_ops::FsOps;
 use launchpad::adapter::launchctl::LaunchctlClient;
-use launchpad::domain::job::{JobCapabilities, JobScope, JobSummary};
+use launchpad::domain::job::{JobCapabilities, JobMetadata, JobScope, JobSummary};
 use launchpad::domain::status::JobStatus;
 use launchpad::error::{AppError, AppResult};
 use launchpad::service::delete_service::DeleteService;
@@ -45,6 +45,18 @@ impl LaunchctlClient for MockLaunchctl {
     }
 
     fn kickstart(&self, _target: &str) -> AppResult<()> {
+        Ok(())
+    }
+
+    fn enable(&self, _target: &str) -> AppResult<()> {
+        Ok(())
+    }
+
+    fn disable(&self, _target: &str) -> AppResult<()> {
+        Ok(())
+    }
+
+    fn bootstrap(&self, _domain: &str, _path: &str) -> AppResult<()> {
         Ok(())
     }
 
@@ -158,6 +170,7 @@ fn delete_enabled_job() -> JobSummary {
         scope: JobScope::UserAgent,
         status: JobStatus::Loaded,
         is_starred: false,
+        metadata: JobMetadata::default(),
         capabilities: JobCapabilities {
             can_trigger: true,
             can_delete: true,
