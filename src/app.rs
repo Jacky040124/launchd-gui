@@ -11,6 +11,7 @@ use launchpad::adapter::log_stream::SystemLogStreamClient;
 use launchpad::adapter::plist_doc::SystemPlistDocumentStore;
 use launchpad::adapter::plist_reader::SystemPlistReader;
 use launchpad::adapter::star_store::JsonStarStore;
+use launchpad::config::AppConfig;
 use launchpad::domain::action::TriggerAction;
 use launchpad::domain::filter::AdvancedFilter;
 use launchpad::domain::job::{JobScope, JobSummary};
@@ -141,6 +142,7 @@ struct AppController {
 
 impl AppController {
     fn new() -> Self {
+        let config = AppConfig::from_env();
         let launchctl = Arc::new(SystemLaunchctlClient);
         let plist_reader = Arc::new(SystemPlistReader);
         let fs_ops = Arc::new(SystemFsOps);
@@ -160,7 +162,7 @@ impl AppController {
             delete_service: DeleteService::new(launchctl, fs_ops, uid),
             diagnostic_service: DiagnosticService,
             log_service: LogService::new(Arc::new(SystemLogStreamClient)),
-            ai_service: AiService::new(),
+            ai_service: AiService::new_with_default(&config.ai_default_provider),
             plist_service: PlistService::new(Arc::new(SystemPlistDocumentStore)),
             star_service,
             clipboard,
@@ -655,6 +657,12 @@ impl AppController {
         ui.set_ai_prompt(self.editor_state.ai_prompt.clone().into());
     }
 
+    fn cycle_ai_provider(&mut self, ui: &MainWindow) {
+        let selected = self.ai_service.cycle_provider();
+        ui.set_ai_provider_text(format!("AI Provider: {selected}").into());
+        ui.set_status_message(format!("Switched AI provider to {selected}.").into());
+    }
+
     fn run_ai_assistant(&mut self, ui: &MainWindow) {
         if self.editor_state.ai_prompt.trim().is_empty() {
             ui.set_status_message("Please enter AI prompt first.".into());
@@ -907,6 +915,9 @@ impl AppController {
         ui.set_editor_diagnostics_text(self.editor_state.diagnostics_text.clone().into());
         ui.set_ai_prompt(self.editor_state.ai_prompt.clone().into());
         ui.set_ai_response(self.editor_state.ai_response.clone().into());
+        ui.set_ai_provider_text(
+            format!("AI Provider: {}", self.ai_service.active_provider_name()).into(),
+        );
         let target_text = match &self.editor_target {
             Some(EditorTarget::Existing { index }) => self
                 .jobs
@@ -1574,6 +1585,16 @@ pub fn run() -> Result<(), slint::PlatformError> {
         ui.on_ai_request_requested(move || {
             if let Some(ui) = ui_weak.upgrade() {
                 controller.borrow_mut().run_ai_assistant(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_ai_cycle_provider_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().cycle_ai_provider(&ui);
             }
         });
     }

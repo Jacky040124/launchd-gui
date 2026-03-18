@@ -49,6 +49,7 @@ LaunchPad currently includes these core capabilities:
    - natural-language prompt for launchd edits
    - Claude Agent sidecar integration hook
    - local heuristic fallback when remote provider unavailable
+   - in-app provider switching (openai/openrouter/lm-studio/ollama/xai/anthropic/google/claude-sidecar)
 11. **Command palette (Raycast-style interaction)**:
    - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `logs`)
 
@@ -82,6 +83,9 @@ tests/
 - Linux build dependencies for CI/local check:
   - `pkg-config`
   - `libfontconfig1-dev`
+- Optional AI environment variables:
+  - `LAUNCHPAD_AI_PROVIDER` (default AI provider)
+  - `LAUNCHPAD_CLAUDE_SIDECAR` (Claude sidecar executable path)
 
 ### Run
 

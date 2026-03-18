@@ -18,6 +18,7 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
 2. **OpenAI-compatible / Anthropic / Google**
    - 已有模块骨架（`openai_compat.rs` / `anthropic.rs` / `google.rs`）
    - 当前构建仍返回 “not configured” 提示，后续阶段会接入真实 API 调用
+   - OpenAI-compatible 预置名称：`openai` / `openrouter` / `lm-studio` / `ollama` / `xai`
 
 3. **本地启发式 fallback**
    - `AiService` 默认 fallback 到 `heuristic-local` provider
@@ -27,8 +28,16 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
 
 - 在 Plist Editor 区域提供：
   - prompt 输入
+  - provider 循环切换按钮
   - AI Analyze 触发按钮
   - 建议文本输出面板
+
+## 配置
+
+- `LAUNCHPAD_AI_PROVIDER`
+  - 指定默认 provider（如 `heuristic-local`、`openai`、`claude-sidecar`）
+- `LAUNCHPAD_CLAUDE_SIDECAR`
+  - 可选，指定 sidecar 可执行路径
 
 ## 安全策略（当前阶段）
 

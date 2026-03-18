@@ -1,27 +1,106 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use crate::adapter::ai::anthropic::AnthropicProvider;
 use crate::adapter::ai::claude_agent_sidecar::ClaudeAgentSidecarProvider;
+use crate::adapter::ai::google::GoogleProvider;
+use crate::adapter::ai::openai_compat::OpenAiCompatibleProvider;
 use crate::adapter::ai::provider::{AiEditRequest, AiEditResponse, AiProvider};
 use crate::error::AppResult;
 
 pub struct AiService {
-    provider: Arc<dyn AiProvider>,
+    providers: BTreeMap<String, Arc<dyn AiProvider>>,
+    active_provider: String,
 }
 
 impl AiService {
     pub fn new() -> Self {
-        let provider: Arc<dyn AiProvider> = ClaudeAgentSidecarProvider::from_env()
-            .map(|provider| Arc::new(provider) as Arc<dyn AiProvider>)
-            .unwrap_or_else(|| Arc::new(HeuristicAiProvider));
-        Self { provider }
+        Self::new_with_default("heuristic-local")
+    }
+
+    pub fn new_with_default(default_provider: &str) -> Self {
+        let mut providers: BTreeMap<String, Arc<dyn AiProvider>> = BTreeMap::new();
+        providers.insert("heuristic-local".to_string(), Arc::new(HeuristicAiProvider));
+
+        providers.insert(
+            "openai".to_string(),
+            Arc::new(OpenAiCompatibleProvider::new("openai")),
+        );
+        providers.insert(
+            "openrouter".to_string(),
+            Arc::new(OpenAiCompatibleProvider::new("openrouter")),
+        );
+        providers.insert(
+            "lm-studio".to_string(),
+            Arc::new(OpenAiCompatibleProvider::new("lm-studio")),
+        );
+        providers.insert(
+            "ollama".to_string(),
+            Arc::new(OpenAiCompatibleProvider::new("ollama")),
+        );
+        providers.insert(
+            "xai".to_string(),
+            Arc::new(OpenAiCompatibleProvider::new("xai")),
+        );
+        providers.insert("anthropic".to_string(), Arc::new(AnthropicProvider));
+        providers.insert("google".to_string(), Arc::new(GoogleProvider));
+
+        if let Some(sidecar) = ClaudeAgentSidecarProvider::from_env() {
+            providers.insert("claude-sidecar".to_string(), Arc::new(sidecar));
+        }
+
+        let active_provider = if providers.contains_key(default_provider) {
+            default_provider.to_string()
+        } else {
+            "heuristic-local".to_string()
+        };
+
+        Self {
+            providers,
+            active_provider,
+        }
     }
 
     pub fn with_provider(provider: Arc<dyn AiProvider>) -> Self {
-        Self { provider }
+        let name = provider.provider_name().to_string();
+        let mut providers: BTreeMap<String, Arc<dyn AiProvider>> = BTreeMap::new();
+        providers.insert(name.clone(), provider);
+        Self {
+            providers,
+            active_provider: name,
+        }
+    }
+
+    pub fn available_providers(&self) -> Vec<String> {
+        self.providers.keys().cloned().collect()
+    }
+
+    pub fn active_provider_name(&self) -> &str {
+        &self.active_provider
+    }
+
+    pub fn set_active_provider(&mut self, provider: &str) -> bool {
+        if self.providers.contains_key(provider) {
+            self.active_provider = provider.to_string();
+            return true;
+        }
+        false
+    }
+
+    pub fn cycle_provider(&mut self) -> String {
+        let names = self.available_providers();
+        let Some(current_index) = names.iter().position(|name| name == &self.active_provider)
+        else {
+            self.active_provider = "heuristic-local".to_string();
+            return self.active_provider.clone();
+        };
+        let next_index = (current_index + 1) % names.len();
+        self.active_provider = names[next_index].clone();
+        self.active_provider.clone()
     }
 
     pub fn suggest_edit(&self, prompt: &str, xml_snapshot: &str) -> AppResult<AiEditResponse> {
-        self.provider.suggest_edit(&AiEditRequest {
+        self.providers[&self.active_provider].suggest_edit(&AiEditRequest {
             user_prompt: prompt.to_string(),
             xml_snapshot: xml_snapshot.to_string(),
         })
@@ -109,5 +188,13 @@ mod tests {
             .expect("ai response");
         assert_eq!(response.provider, "mock");
         assert!(response.summary.contains("enable run at load"));
+    }
+
+    #[test]
+    fn ai_service_cycles_provider_names() {
+        let mut service = AiService::new();
+        let current = service.active_provider_name().to_string();
+        let next = service.cycle_provider();
+        assert_ne!(current, next);
     }
 }
