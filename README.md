@@ -46,6 +46,7 @@ LaunchPad currently includes these core capabilities:
    - searchable key panel (36+ documented launchd keys, click to inject templates)
 9. **Built-in log viewer (selected job)**:
    - fetch recent logs by selected label (no need to open Console.app)
+   - history mode and short live-capture mode
 10. **AI suggestion panel (native workflow scaffold)**:
    - natural-language prompt for launchd edits
    - Claude Agent sidecar integration hook
@@ -54,7 +55,7 @@ LaunchPad currently includes these core capabilities:
    - patch diff preview + explicit confirm before applying edits to editor
    - provider HTTP calls for OpenAI-compatible, Anthropic, and Google (configurable endpoint/model)
 11. **Command palette (Raycast-style interaction)**:
-   - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `save load`, `save load enable`, `logs`)
+   - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `save load`, `save load enable`, `logs`, `logs live`, `logs history`)
    - batch starred controls (`start starred`, `stop starred`, `enable starred`, etc.)
    - AI provider commands (`providers`, `provider <name>`)
 

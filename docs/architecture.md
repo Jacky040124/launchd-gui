@@ -35,7 +35,7 @@ This layer contains no process execution and is suitable for deterministic tests
   - serializes XML preview
   - preserves expert string key entries for advanced launchd options
 - `log_stream.rs`
-  - wraps `log show` for selected-label recent logs (macOS)
+  - wraps `log show` for history logs and `log stream` for short live capture (macOS)
 - `ai/`
   - provider abstraction and provider-specific adapters
   - includes Claude Agent sidecar bridge and provider stubs

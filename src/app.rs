@@ -96,7 +96,9 @@ struct EditorState {
     ai_prompt: String,
     ai_response: String,
     ai_diff_preview: String,
+    log_live_mode: bool,
     log_window_minutes: String,
+    log_stream_seconds: String,
     log_max_lines: String,
 }
 
@@ -120,7 +122,9 @@ impl EditorState {
             ai_prompt: String::new(),
             ai_response: String::new(),
             ai_diff_preview: String::new(),
+            log_live_mode: false,
             log_window_minutes: "10".to_string(),
+            log_stream_seconds: "5".to_string(),
             log_max_lines: "120".to_string(),
         }
     }
@@ -418,13 +422,25 @@ impl AppController {
             "save load" => self.save_editor_and_load(ui),
             "save load enable" => self.save_editor_load_enable(ui),
             "logs" => self.load_recent_logs(ui),
+            "logs live" => {
+                self.editor_state.log_live_mode = true;
+                ui.set_log_live_mode(true);
+                ui.set_log_mode_text("Mode:Live".into());
+                self.load_recent_logs(ui);
+            }
+            "logs history" => {
+                self.editor_state.log_live_mode = false;
+                ui.set_log_live_mode(false);
+                ui.set_log_mode_text("Mode:History".into());
+                self.load_recent_logs(ui);
+            }
             "star" | "unstar" => self.toggle_star(ui),
             "new user" | "new user job" => self.start_new_job_editor(ui, JobScope::UserAgent),
             "new global" | "new global job" => self.start_new_job_editor(ui, JobScope::GlobalAgent),
             _ => {
                 ui.set_status_message(
                     format!(
-                        "Unknown command '{}'. Try: refresh/start/stop/enable/load/new user/save/logs/start starred",
+                        "Unknown command '{}'. Try: refresh/start/stop/enable/load/new user/save/logs/logs live/start starred",
                         normalized
                     )
                     .into(),
@@ -722,9 +738,27 @@ impl AppController {
         ui.set_log_window_minutes(self.editor_state.log_window_minutes.clone().into());
     }
 
+    fn log_stream_seconds_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.log_stream_seconds = value.trim().to_string();
+        ui.set_log_stream_seconds(self.editor_state.log_stream_seconds.clone().into());
+    }
+
     fn log_max_lines_changed(&mut self, ui: &MainWindow, value: &str) {
         self.editor_state.log_max_lines = value.trim().to_string();
         ui.set_log_max_lines(self.editor_state.log_max_lines.clone().into());
+    }
+
+    fn toggle_log_live_mode(&mut self, ui: &MainWindow) {
+        self.editor_state.log_live_mode = !self.editor_state.log_live_mode;
+        ui.set_log_live_mode(self.editor_state.log_live_mode);
+        ui.set_log_mode_text(
+            if self.editor_state.log_live_mode {
+                "Mode:Live"
+            } else {
+                "Mode:History"
+            }
+            .into(),
+        );
     }
 
     fn key_panel_query_changed(&mut self, ui: &MainWindow, query: &str) {
@@ -1172,20 +1206,40 @@ impl AppController {
             .ok()
             .filter(|value| *value > 0)
             .unwrap_or(120);
-        match self.log_service.recent_logs(&label, minutes, max_lines) {
+        let stream_seconds = self
+            .editor_state
+            .log_stream_seconds
+            .trim()
+            .parse::<u32>()
+            .ok()
+            .filter(|value| *value > 0)
+            .unwrap_or(5);
+        let log_result = if self.editor_state.log_live_mode {
+            self.log_service
+                .live_logs(&label, stream_seconds, max_lines)
+        } else {
+            self.log_service.recent_logs(&label, minutes, max_lines)
+        };
+
+        match log_result {
             Ok(logs) => {
                 self.recent_logs_text = if logs.trim().is_empty() {
-                    "No recent logs found.".to_string()
+                    if self.editor_state.log_live_mode {
+                        "No live logs captured.".to_string()
+                    } else {
+                        "No recent logs found.".to_string()
+                    }
                 } else {
                     logs
                 };
                 ui.set_log_view_text(self.recent_logs_text.clone().into());
+                let mode_text = if self.editor_state.log_live_mode {
+                    format!("live={}s", stream_seconds)
+                } else {
+                    format!("history={}m", minutes)
+                };
                 ui.set_status_message(
-                    format!(
-                        "Loaded recent logs (window={}m, max_lines={}).",
-                        minutes, max_lines
-                    )
-                    .into(),
+                    format!("Loaded logs ({mode_text}, max_lines={max_lines}).").into(),
                 );
             }
             Err(err) => {
@@ -1308,7 +1362,17 @@ impl AppController {
         ui.set_ai_response(self.editor_state.ai_response.clone().into());
         ui.set_ai_diff_preview(self.editor_state.ai_diff_preview.clone().into());
         ui.set_log_window_minutes(self.editor_state.log_window_minutes.clone().into());
+        ui.set_log_stream_seconds(self.editor_state.log_stream_seconds.clone().into());
         ui.set_log_max_lines(self.editor_state.log_max_lines.clone().into());
+        ui.set_log_live_mode(self.editor_state.log_live_mode);
+        ui.set_log_mode_text(
+            if self.editor_state.log_live_mode {
+                "Mode:Live"
+            } else {
+                "Mode:History"
+            }
+            .into(),
+        );
         ui.set_ai_patch_ready(self.pending_ai_patch_document.is_some());
         ui.set_ai_provider_text(
             format!("AI Provider: {}", self.ai_service.active_provider_name()).into(),
@@ -1988,11 +2052,33 @@ pub fn run() -> Result<(), slint::PlatformError> {
     {
         let ui_weak = ui.as_weak();
         let controller = controller.clone();
+        ui.on_log_stream_seconds_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .log_stream_seconds_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
         ui.on_log_max_lines_changed(move |value| {
             if let Some(ui) = ui_weak.upgrade() {
                 controller
                     .borrow_mut()
                     .log_max_lines_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_toggle_log_mode_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().toggle_log_live_mode(&ui);
             }
         });
     }

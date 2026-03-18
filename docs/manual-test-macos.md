@@ -179,7 +179,8 @@ Expected:
 
 1. Select a job with known recent output.
 2. In editor area, click **Refresh Logs**.
-   - Optionally set **Window (min)** and **Max lines** before refresh.
+   - Optionally set **Window (min)** / **Stream (sec)** / **Max lines** before refresh.
+   - Toggle **Mode:History / Mode:Live** and retest.
 3. Verify logs appear in the **Logs** panel.
 4. Switch to another job and click **Refresh Logs** again.
 
@@ -188,6 +189,7 @@ Expected:
 - Empty results show a friendly message instead of crashing.
 - On unsupported environments, an explicit error is shown in status/log panel.
 - Custom window/max-lines settings are respected.
+- Live mode captures short streaming window based on stream seconds setting.
 
 ## L. Command Palette
 
