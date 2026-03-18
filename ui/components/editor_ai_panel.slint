@@ -6,6 +6,7 @@ export component EditorAiPanel inherits Rectangle {
     in-out property <string> ai_prompt: "";
     in-out property <string> ai_provider_text: "AI Provider: heuristic-local";
     in-out property <bool> ai_patch_ready: false;
+    in-out property <bool> ai_actions_ready: false;
     in-out property <string> ai_response: "";
     in-out property <string> ai_diff_preview: "";
     callback ai_prompt_changed(string);
@@ -13,6 +14,7 @@ export component EditorAiPanel inherits Rectangle {
     callback ai_cycle_provider_requested();
     callback ai_apply_patch_requested();
     callback ai_confirm_patch_requested();
+    callback ai_run_actions_requested();
 
     border-width: 1px;
     border-color: RaycastTheme.border-info;
@@ -51,6 +53,11 @@ export component EditorAiPanel inherits Rectangle {
                 text: "Confirm Apply";
                 enabled: root.ai_patch_ready && !root.busy;
                 clicked => { root.ai_confirm_patch_requested(); }
+            }
+            Button {
+                text: "Run AI Actions";
+                enabled: root.ai_actions_ready && !root.busy;
+                clicked => { root.ai_run_actions_requested(); }
             }
         }
         Text {

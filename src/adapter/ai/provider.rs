@@ -11,6 +11,7 @@ pub struct AiEditResponse {
     pub provider: String,
     pub summary: String,
     pub suggested_patch_notes: Vec<String>,
+    pub suggested_actions: Vec<String>,
 }
 
 impl AiEditResponse {
@@ -20,6 +21,11 @@ impl AiEditResponse {
             chunks.push(self.summary.clone());
         }
         chunks.extend(self.suggested_patch_notes.clone());
+        chunks.extend(
+            self.suggested_actions
+                .iter()
+                .map(|action| format!("action:{action}")),
+        );
         chunks
     }
 }
@@ -71,9 +77,33 @@ pub fn summarize_and_extract_notes(raw_text: &str) -> (String, Vec<String>) {
     (summary, notes)
 }
 
+pub fn extract_suggested_actions(raw_text: &str) -> Vec<String> {
+    raw_text
+        .lines()
+        .map(str::trim)
+        .filter_map(|line| {
+            let normalized = line
+                .trim_start_matches("- ")
+                .trim_start_matches("* ")
+                .trim();
+            let action = normalized
+                .strip_prefix("ACTION:")
+                .or_else(|| normalized.strip_prefix("Action:"))
+                .or_else(|| normalized.strip_prefix("action:"))?
+                .trim()
+                .to_ascii_lowercase();
+            if action.is_empty() {
+                None
+            } else {
+                Some(action)
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::AiEditResponse;
+    use super::{extract_suggested_actions, AiEditResponse};
 
     #[test]
     fn stream_chunks_contains_summary_and_notes() {
@@ -81,8 +111,23 @@ mod tests {
             provider: "mock".to_string(),
             summary: "summary".to_string(),
             suggested_patch_notes: vec!["note-a".to_string(), "note-b".to_string()],
+            suggested_actions: vec!["enable".to_string()],
         };
         let chunks = response.stream_chunks();
-        assert_eq!(chunks, vec!["summary", "note-a", "note-b"]);
+        assert_eq!(chunks, vec!["summary", "note-a", "note-b", "action:enable"]);
+    }
+
+    #[test]
+    fn extract_suggested_actions_reads_action_lines() {
+        let text = "- ACTION: load\n* Action: enable\n- action: restart";
+        let actions = extract_suggested_actions(text);
+        assert_eq!(
+            actions,
+            vec![
+                "load".to_string(),
+                "enable".to_string(),
+                "restart".to_string()
+            ]
+        );
     }
 }

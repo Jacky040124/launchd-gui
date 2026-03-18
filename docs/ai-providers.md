@@ -52,3 +52,5 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
 
 - AI 会先生成 **patch 预览 diff**，并要求用户点击 `Apply AI Patch` + `Confirm Apply` 才会写入编辑器状态。
 - AI 不会直接落盘到 plist 文件；所有磁盘写入仍需用户显式点击 Save。
+- 当模型返回 `ACTION: <command>`（如 `ACTION: load` / `ACTION: enable`）时，
+  LaunchPad 会将其显示为建议动作，仍需用户显式点击 `Run AI Actions` 才执行。

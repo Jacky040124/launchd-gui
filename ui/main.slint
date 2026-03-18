@@ -64,6 +64,7 @@ export component MainWindow inherits Window {
     in-out property <string> ai_provider_text: "AI Provider: heuristic-local";
     in-out property <string> ai_diff_preview: "";
     in-out property <bool> ai_patch_ready: false;
+    in-out property <bool> ai_actions_ready: false;
     in-out property <string> key_panel_query: "";
     in-out property <string> key_panel_count_text: "";
     in-out property <[string]> key_panel_lines: [];
@@ -111,6 +112,7 @@ export component MainWindow inherits Window {
     callback ai_cycle_provider_requested();
     callback ai_apply_patch_requested();
     callback ai_confirm_patch_requested();
+    callback ai_run_actions_requested();
     callback key_panel_query_changed(string);
     callback key_panel_add_requested(int);
 
@@ -210,6 +212,7 @@ export component MainWindow inherits Window {
             ai_prompt <=> root.ai_prompt;
             ai_provider_text: root.ai_provider_text;
             ai_patch_ready: root.ai_patch_ready;
+            ai_actions_ready: root.ai_actions_ready;
             ai_response: root.ai_response;
             ai_diff_preview: root.ai_diff_preview;
             key_panel_query <=> root.key_panel_query;
@@ -238,6 +241,7 @@ export component MainWindow inherits Window {
             ai_cycle_provider_requested => { root.ai_cycle_provider_requested(); }
             ai_apply_patch_requested => { root.ai_apply_patch_requested(); }
             ai_confirm_patch_requested => { root.ai_confirm_patch_requested(); }
+            ai_run_actions_requested => { root.ai_run_actions_requested(); }
             key_panel_query_changed(value) => { root.key_panel_query_changed(value); }
             key_panel_add_requested(index) => { root.key_panel_add_requested(index); }
         }

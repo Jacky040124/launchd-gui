@@ -156,6 +156,7 @@ struct AppController {
     editor_state: EditorState,
     editor_target: Option<EditorTarget>,
     pending_ai_patch_document: Option<StandardPlistDocument>,
+    pending_ai_actions: Vec<TriggerAction>,
     ai_patch_confirmation_required: bool,
     ui_state: UiState,
 }
@@ -219,6 +220,7 @@ impl AppController {
             editor_state: EditorState::default(),
             editor_target: None,
             pending_ai_patch_document: None,
+            pending_ai_actions: Vec::new(),
             ai_patch_confirmation_required: false,
             ui_state: UiState::default(),
         }
@@ -248,6 +250,7 @@ impl AppController {
                     self.editor_target = None;
                     self.editor_state = EditorState::default();
                     self.pending_ai_patch_document = None;
+                    self.pending_ai_actions.clear();
                     self.ai_patch_confirmation_required = false;
                     self.sync_editor_to_ui(ui);
                     self.recent_logs_text.clear();
@@ -302,6 +305,7 @@ impl AppController {
                 self.editor_target = None;
                 self.editor_state = EditorState::default();
                 self.pending_ai_patch_document = None;
+                self.pending_ai_actions.clear();
                 self.ai_patch_confirmation_required = false;
                 self.sync_editor_to_ui(ui);
                 self.recent_logs_text.clear();
@@ -342,6 +346,7 @@ impl AppController {
             ..EditorState::default()
         };
         self.pending_ai_patch_document = None;
+        self.pending_ai_actions.clear();
         self.ai_patch_confirmation_required = false;
         self.refresh_editor_preview(ui);
         self.sync_editor_to_ui(ui);
@@ -427,6 +432,7 @@ impl AppController {
             "save" => self.save_editor(ui),
             "save load" => self.save_editor_and_load(ui),
             "save load enable" => self.save_editor_load_enable(ui),
+            "ai actions" | "run ai actions" => self.run_ai_suggested_actions(ui),
             "logs" => self.load_recent_logs(ui),
             "logs live" => {
                 self.editor_state.log_live_mode = true;
@@ -446,7 +452,7 @@ impl AppController {
             _ => {
                 ui.set_status_message(
                     format!(
-                        "Unknown command '{}'. Try: refresh/start/stop/restart/enable/load/new user/save/logs/logs live/start starred",
+                        "Unknown command '{}'. Try: refresh/start/stop/restart/enable/load/new user/save/ai actions/logs/logs live/start starred",
                         normalized
                     )
                     .into(),
@@ -894,6 +900,8 @@ impl AppController {
 
     fn ai_prompt_changed(&mut self, ui: &MainWindow, value: &str) {
         self.editor_state.ai_prompt = value.to_string();
+        self.pending_ai_actions.clear();
+        ui.set_ai_actions_ready(false);
         ui.set_ai_prompt(self.editor_state.ai_prompt.clone().into());
     }
 
@@ -918,25 +926,38 @@ impl AppController {
         {
             Ok(stream) => {
                 let response = stream.response;
-                let mut lines = vec![format!(
-                    "Provider: {}\nSummary: {}",
-                    response.provider, response.summary
-                )];
+                let provider = response.provider;
+                let summary = response.summary;
+                let suggested_patch_notes = response.suggested_patch_notes;
+                let suggested_actions_raw = response.suggested_actions;
+                let mut lines = vec![format!("Provider: {}\nSummary: {}", provider, summary)];
                 if !stream.chunks.is_empty() {
                     lines.push("Stream preview:".to_string());
                     lines.extend(stream.chunks.into_iter().map(|chunk| format!("> {chunk}")));
                 }
-                if !response.suggested_patch_notes.is_empty() {
+                if !suggested_patch_notes.is_empty() {
                     lines.push("Suggestions:".to_string());
                     lines.extend(
-                        response
-                            .suggested_patch_notes
+                        suggested_patch_notes
                             .into_iter()
                             .map(|item| format!("- {item}")),
                     );
                 }
+                self.pending_ai_actions = suggested_actions_raw
+                    .iter()
+                    .filter_map(|action| TriggerAction::from_ui_value(action))
+                    .collect();
+                if !suggested_actions_raw.is_empty() {
+                    lines.push("Suggested Actions:".to_string());
+                    lines.extend(
+                        suggested_actions_raw
+                            .into_iter()
+                            .map(|item| format!("* {item}")),
+                    );
+                }
                 self.editor_state.ai_response = lines.join("\n");
                 ui.set_ai_response(self.editor_state.ai_response.clone().into());
+                ui.set_ai_actions_ready(!self.pending_ai_actions.is_empty());
                 self.preview_ai_patch(ui);
                 ui.set_status_message("AI suggestions updated.".into());
             }
@@ -944,10 +965,12 @@ impl AppController {
                 self.editor_state.ai_response = format!("AI request failed: {err}");
                 ui.set_ai_response(self.editor_state.ai_response.clone().into());
                 self.pending_ai_patch_document = None;
+                self.pending_ai_actions.clear();
                 self.ai_patch_confirmation_required = false;
                 self.editor_state.ai_diff_preview.clear();
                 ui.set_ai_diff_preview("".into());
                 ui.set_ai_patch_ready(false);
+                ui.set_ai_actions_ready(false);
                 ui.set_status_message(format!("AI request failed: {err}").into());
             }
         }
@@ -983,6 +1006,42 @@ impl AppController {
         ui.set_ai_diff_preview("".into());
         ui.set_status_message(
             "AI patch applied to editor. Review and click Save when ready.".into(),
+        );
+    }
+
+    fn run_ai_suggested_actions(&mut self, ui: &MainWindow) {
+        if self.pending_ai_actions.is_empty() {
+            ui.set_status_message("No AI suggested actions available.".into());
+            return;
+        }
+        let Some(index) = self.ui_state.selected_index else {
+            ui.set_status_message("Select a job first to run AI actions.".into());
+            return;
+        };
+        let Some(job) = self.jobs.get(index).cloned() else {
+            ui.set_status_message("Selected job is no longer available.".into());
+            return;
+        };
+
+        let actions = self.pending_ai_actions.clone();
+        let mut success = 0usize;
+        let mut failed = 0usize;
+        for action in actions {
+            match self.action_service.execute(&job, action) {
+                Ok(_) => success += 1,
+                Err(_) => failed += 1,
+            }
+        }
+
+        self.pending_ai_actions.clear();
+        ui.set_ai_actions_ready(false);
+        self.refresh(ui);
+        ui.set_status_message(
+            format!(
+                "AI actions finished: {} success, {} failed.",
+                success, failed
+            )
+            .into(),
         );
     }
 
@@ -1324,6 +1383,7 @@ impl AppController {
             Ok(document) => {
                 self.editor_state = EditorState::from_document(&document, &self.plist_service);
                 self.pending_ai_patch_document = None;
+                self.pending_ai_actions.clear();
                 self.ai_patch_confirmation_required = false;
                 self.recent_logs_text = "Click 'Refresh Logs' to load runtime logs.".to_string();
                 ui.set_log_view_text(self.recent_logs_text.clone().into());
@@ -1333,6 +1393,7 @@ impl AppController {
             Err(err) => {
                 self.editor_state = EditorState::default();
                 self.pending_ai_patch_document = None;
+                self.pending_ai_actions.clear();
                 self.ai_patch_confirmation_required = false;
                 self.sync_editor_to_ui(ui);
                 self.recent_logs_text = "Log view unavailable: plist load failed.".to_string();
@@ -1438,6 +1499,7 @@ impl AppController {
             .into(),
         );
         ui.set_ai_patch_ready(self.pending_ai_patch_document.is_some());
+        ui.set_ai_actions_ready(!self.pending_ai_actions.is_empty());
         ui.set_ai_provider_text(
             format!("AI Provider: {}", self.ai_service.active_provider_name()).into(),
         );
@@ -1496,6 +1558,7 @@ impl AppController {
             self.editor_target = None;
             self.editor_state = EditorState::default();
             self.pending_ai_patch_document = None;
+            self.pending_ai_actions.clear();
             self.ai_patch_confirmation_required = false;
             self.sync_editor_to_ui(ui);
             self.recent_logs_text.clear();
@@ -2221,6 +2284,16 @@ pub fn run() -> Result<(), slint::PlatformError> {
         ui.on_ai_confirm_patch_requested(move || {
             if let Some(ui) = ui_weak.upgrade() {
                 controller.borrow_mut().confirm_apply_ai_patch(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_ai_run_actions_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().run_ai_suggested_actions(&ui);
             }
         });
     }

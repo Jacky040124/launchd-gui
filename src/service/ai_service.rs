@@ -164,6 +164,7 @@ impl AiProvider for HeuristicAiProvider {
             provider: self.provider_name().to_string(),
             summary: format!("基于当前配置与提示词的建议（{}）", self.provider_name()),
             suggested_patch_notes: suggestions,
+            suggested_actions: Vec::new(),
         })
     }
 }
@@ -192,6 +193,7 @@ mod tests {
                 provider: self.provider_name().to_string(),
                 summary: format!("echo:{}", request.user_prompt),
                 suggested_patch_notes: vec!["note-a".to_string()],
+                suggested_actions: vec!["enable".to_string()],
             })
         }
 
@@ -200,6 +202,7 @@ mod tests {
                 provider: self.provider_name().to_string(),
                 summary: format!("echo:{}", request.user_prompt),
                 suggested_patch_notes: vec!["note-a".to_string()],
+                suggested_actions: vec!["start".to_string()],
             };
             Ok(AiStreamResponse {
                 chunks: vec!["echo chunk".to_string()],

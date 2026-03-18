@@ -56,6 +56,7 @@ impl AiProvider for ClaudeAgentSidecarProvider {
                 summary
             },
             suggested_patch_notes: Vec::new(),
+            suggested_actions: Vec::new(),
         })
     }
 }

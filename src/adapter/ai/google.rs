@@ -4,7 +4,8 @@ use reqwest::blocking::Client;
 use serde_json::{json, Value};
 
 use crate::adapter::ai::provider::{
-    summarize_and_extract_notes, AiEditRequest, AiEditResponse, AiProvider,
+    extract_suggested_actions, summarize_and_extract_notes, AiEditRequest, AiEditResponse,
+    AiProvider,
 };
 use crate::error::{AppError, AppResult};
 
@@ -77,10 +78,12 @@ impl AiProvider for GoogleProvider {
             AppError::Validation("Google response missing candidate text.".to_string())
         })?;
         let (summary, suggested_patch_notes) = summarize_and_extract_notes(&content);
+        let suggested_actions = extract_suggested_actions(&content);
         Ok(AiEditResponse {
             provider: self.provider_name().to_string(),
             summary,
             suggested_patch_notes,
+            suggested_actions,
         })
     }
 }

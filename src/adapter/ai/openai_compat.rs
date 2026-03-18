@@ -4,7 +4,8 @@ use reqwest::blocking::Client;
 use serde_json::{json, Value};
 
 use crate::adapter::ai::provider::{
-    summarize_and_extract_notes, AiEditRequest, AiEditResponse, AiProvider, AiStreamResponse,
+    extract_suggested_actions, summarize_and_extract_notes, AiEditRequest, AiEditResponse,
+    AiProvider, AiStreamResponse,
 };
 use crate::error::{AppError, AppResult};
 
@@ -85,10 +86,12 @@ impl AiProvider for OpenAiCompatibleProvider {
             ))
         })?;
         let (summary, suggested_patch_notes) = summarize_and_extract_notes(&content);
+        let suggested_actions = extract_suggested_actions(&content);
         Ok(AiEditResponse {
             provider: self.provider_name.to_string(),
             summary,
             suggested_patch_notes,
+            suggested_actions,
         })
     }
 
@@ -131,10 +134,12 @@ impl AiProvider for OpenAiCompatibleProvider {
 
         let content = chunks.join("");
         let (summary, suggested_patch_notes) = summarize_and_extract_notes(&content);
+        let suggested_actions = extract_suggested_actions(&content);
         let response = AiEditResponse {
             provider: self.provider_name.to_string(),
             summary,
             suggested_patch_notes,
+            suggested_actions,
         };
         Ok(AiStreamResponse { response, chunks })
     }
