@@ -254,7 +254,14 @@ Expected:
    /path/to/quicklaunch_helper --list
    /path/to/quicklaunch_helper --summary
    ```
+5. Queue one action and trigger app refresh:
+   ```bash
+   /path/to/quicklaunch_helper --enqueue-action start <job-id-from-list>
+   /path/to/quicklaunch_helper --drain-actions
+   ```
+   > `--drain-actions` should now show queued JSON; run LaunchPad **Refresh** once, then run again and it should return `[]`.
 
 Expected:
 - Bridge helper receives synced JSON payload.
 - `--list` and `--summary` return non-empty output when jobs are available.
+- Queued helper actions are drained and executed by LaunchPad on refresh.

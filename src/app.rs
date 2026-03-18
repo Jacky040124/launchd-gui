@@ -11,7 +11,7 @@ use launchpad::adapter::log_stream::SystemLogStreamClient;
 use launchpad::adapter::plist_doc::SystemPlistDocumentStore;
 use launchpad::adapter::plist_reader::SystemPlistReader;
 use launchpad::adapter::quicklaunch::{
-    BridgeQuickLaunchProvider, FileQuickLaunchProvider, NoopQuickLaunchProvider,
+    BridgeQuickLaunchProvider, FileQuickLaunchProvider, NoopQuickLaunchProvider, QuickLaunchAction,
     QuickLaunchProvider,
 };
 use launchpad::adapter::star_store::JsonStarStore;
@@ -269,23 +269,26 @@ impl AppController {
                     Ok(count) => format!(" QuickLaunch synced {count} items."),
                     Err(err) => format!(" QuickLaunch sync skipped: {err}."),
                 };
+                let quicklaunch_action_note = self.process_quicklaunch_actions();
                 let visible_count = self.visible_indices.len();
                 if visible_count == 0 {
                     ui.set_status_message(
                         format!(
-                            "Loaded {} jobs. No jobs match current filters.{}",
+                            "Loaded {} jobs. No jobs match current filters.{}{}",
                             self.jobs.len(),
-                            quicklaunch_note
+                            quicklaunch_note,
+                            quicklaunch_action_note
                         )
                         .into(),
                     );
                 } else {
                     ui.set_status_message(
                         format!(
-                            "Loaded {} jobs ({} visible).{}",
+                            "Loaded {} jobs ({} visible).{}{}",
                             self.jobs.len(),
                             visible_count,
-                            quicklaunch_note
+                            quicklaunch_note,
+                            quicklaunch_action_note
                         )
                         .into(),
                     );
@@ -499,6 +502,59 @@ impl AppController {
                 .into(),
             );
         }
+    }
+
+    fn process_quicklaunch_actions(&mut self) -> String {
+        let actions = match self.quicklaunch_service.drain_actions() {
+            Ok(actions) => actions,
+            Err(err) => return format!(" QuickLaunch actions skipped: {err}."),
+        };
+        if actions.is_empty() {
+            return String::new();
+        }
+
+        let mut success = 0usize;
+        let mut failed = 0usize;
+        let mut skipped = 0usize;
+
+        for action in actions {
+            let Some(trigger) = TriggerAction::from_ui_value(action.action.as_str()) else {
+                skipped += action.job_ids.len().max(1);
+                continue;
+            };
+            let (action_success, action_failed, action_skipped) =
+                self.execute_quicklaunch_action(&action, trigger);
+            success += action_success;
+            failed += action_failed;
+            skipped += action_skipped;
+        }
+
+        format!(
+            " QuickLaunch actions: {} success, {} failed, {} skipped.",
+            success, failed, skipped
+        )
+    }
+
+    fn execute_quicklaunch_action(
+        &self,
+        queued_action: &QuickLaunchAction,
+        trigger: TriggerAction,
+    ) -> (usize, usize, usize) {
+        let mut success = 0usize;
+        let mut failed = 0usize;
+        let mut skipped = 0usize;
+        for job_id in &queued_action.job_ids {
+            let Some(job) = self.jobs.iter().find(|job| &job.id == job_id) else {
+                skipped += 1;
+                continue;
+            };
+            match self.action_service.execute(job, trigger) {
+                Ok(_) => success += 1,
+                Err(_) => failed += 1,
+            }
+        }
+
+        (success, failed, skipped)
     }
 
     fn scope_filter_requested(&mut self, ui: &MainWindow, value: &str) {

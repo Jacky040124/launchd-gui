@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::adapter::quicklaunch::{QuickLaunchItem, QuickLaunchProvider};
+use crate::adapter::quicklaunch::{QuickLaunchAction, QuickLaunchItem, QuickLaunchProvider};
 use crate::domain::job::JobSummary;
 use crate::error::AppResult;
 
@@ -84,6 +84,13 @@ impl QuickLaunchService {
         self.provider.sync_items(&items)?;
         Ok(items.len())
     }
+
+    pub fn drain_actions(&self) -> AppResult<Vec<QuickLaunchAction>> {
+        if !self.config.enabled {
+            return Ok(Vec::new());
+        }
+        self.provider.drain_actions()
+    }
 }
 
 fn current_unix_secs() -> u64 {
@@ -98,7 +105,7 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex};
 
-    use crate::adapter::quicklaunch::{QuickLaunchItem, QuickLaunchProvider};
+    use crate::adapter::quicklaunch::{QuickLaunchAction, QuickLaunchItem, QuickLaunchProvider};
     use crate::domain::job::{JobCapabilities, JobMetadata, JobScope, JobSummary};
     use crate::domain::status::JobStatus;
     use crate::error::AppResult;
@@ -108,12 +115,20 @@ mod tests {
     #[derive(Debug, Default)]
     struct MockQuickLaunchProvider {
         synced: Mutex<Vec<QuickLaunchItem>>,
+        queued_actions: Mutex<Vec<QuickLaunchAction>>,
     }
 
     impl QuickLaunchProvider for MockQuickLaunchProvider {
         fn sync_items(&self, items: &[QuickLaunchItem]) -> AppResult<()> {
             *self.synced.lock().expect("lock") = items.to_vec();
             Ok(())
+        }
+
+        fn drain_actions(&self) -> AppResult<Vec<QuickLaunchAction>> {
+            let mut guard = self.queued_actions.lock().expect("lock");
+            let drained = guard.clone();
+            guard.clear();
+            Ok(drained)
         }
     }
 
@@ -163,6 +178,29 @@ mod tests {
 
         let synced_items = provider.synced.lock().expect("lock").clone();
         assert_eq!(synced_items[0].group, "running");
+    }
+
+    #[test]
+    fn drain_actions_returns_and_clears_provider_queue() {
+        let provider = Arc::new(MockQuickLaunchProvider::default());
+        *provider.queued_actions.lock().expect("lock") = vec![QuickLaunchAction {
+            action: "start".to_string(),
+            job_ids: vec!["id-a".to_string()],
+        }];
+        let service = QuickLaunchService::new(
+            provider.clone(),
+            QuickLaunchConfig {
+                enabled: true,
+                starred_only: false,
+                max_items: 5,
+                group_by: QuickLaunchGroupBy::Scope,
+            },
+        );
+
+        let first = service.drain_actions().expect("drain");
+        assert_eq!(first.len(), 1);
+        let second = service.drain_actions().expect("drain");
+        assert!(second.is_empty());
     }
 
     fn job_fixture(label: &str, is_starred: bool) -> JobSummary {

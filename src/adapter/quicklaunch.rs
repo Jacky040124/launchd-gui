@@ -16,8 +16,18 @@ pub struct QuickLaunchItem {
     pub updated_at_unix_secs: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QuickLaunchAction {
+    pub action: String,
+    pub job_ids: Vec<String>,
+}
+
 pub trait QuickLaunchProvider: Send + Sync {
     fn sync_items(&self, items: &[QuickLaunchItem]) -> AppResult<()>;
+
+    fn drain_actions(&self) -> AppResult<Vec<QuickLaunchAction>> {
+        Ok(Vec::new())
+    }
 }
 
 #[derive(Debug, Default)]
@@ -69,6 +79,20 @@ impl QuickLaunchProvider for BridgeQuickLaunchProvider {
             stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
         })
     }
+
+    fn drain_actions(&self) -> AppResult<Vec<QuickLaunchAction>> {
+        let output = Command::new(&self.executable)
+            .arg("--drain-actions")
+            .output()?;
+        if !output.status.success() {
+            return Err(AppError::CommandFailed {
+                command: format!("{} --drain-actions", self.executable),
+                stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            });
+        }
+
+        parse_actions_payload(&String::from_utf8_lossy(&output.stdout))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -96,12 +120,21 @@ impl QuickLaunchProvider for FileQuickLaunchProvider {
     }
 }
 
+fn parse_actions_payload(payload: &str) -> AppResult<Vec<QuickLaunchAction>> {
+    if payload.trim().is_empty() {
+        Ok(Vec::new())
+    } else {
+        Ok(serde_json::from_str(payload)?)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use tempfile::TempDir;
 
     use crate::adapter::quicklaunch::{
-        FileQuickLaunchProvider, NoopQuickLaunchProvider, QuickLaunchItem, QuickLaunchProvider,
+        parse_actions_payload, FileQuickLaunchProvider, NoopQuickLaunchProvider, QuickLaunchAction,
+        QuickLaunchItem, QuickLaunchProvider,
     };
 
     #[test]
@@ -135,5 +168,24 @@ mod tests {
         assert!(saved.contains("job-1"));
         assert!(saved.contains("loaded"));
         assert!(saved.contains("user-agent"));
+    }
+
+    #[test]
+    fn parse_actions_payload_handles_empty_and_valid_json() {
+        let empty = parse_actions_payload("").expect("empty");
+        assert!(empty.is_empty());
+
+        let parsed = parse_actions_payload(
+            r#"[{"action":"start","job_ids":["id-a","id-b"]},{"action":"disable","job_ids":["id-c"]}]"#,
+        )
+        .expect("valid");
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(
+            parsed[0],
+            QuickLaunchAction {
+                action: "start".to_string(),
+                job_ids: vec!["id-a".to_string(), "id-b".to_string()]
+            }
+        );
     }
 }

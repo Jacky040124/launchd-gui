@@ -41,7 +41,7 @@ This layer contains no process execution and is suitable for deterministic tests
   - includes Claude Agent sidecar bridge and provider stubs
 - `quicklaunch.rs`
   - QuickLaunch menu-bar provider abstraction
-  - includes no-op provider, helper-bridge provider (`--sync-json` contract),
+  - includes no-op provider, helper-bridge provider (`--sync-json` + `--drain-actions` contract),
     and file snapshot provider (for external menu helper polling)
 - `launchctl.rs`
   - wraps `launchctl` command invocations and error normalization
@@ -85,6 +85,7 @@ Adapters are trait-based, so tests can inject mock behavior.
   - AI suggestion orchestration (sidecar-first with local heuristic fallback)
 - `quicklaunch_service.rs`
   - prepares and syncs QuickLaunch item set (supports starred-only + max-count + group-by policy)
+  - drains external QuickLaunch action queue for main app execution
 
 ## UI Layer (`ui/main.slint` + `ui/components/*` + `src/main.rs`)
 
@@ -125,6 +126,7 @@ Slint provides a minimal desktop UI:
 - `src/bin/quicklaunch_helper.rs`
   - bridge helper that accepts `--sync-json` payloads
   - supports `--list` and `--summary` for external menu integrations
+  - supports `--enqueue-action` and `--drain-actions` for remote control queue
 
 ## Safety Boundaries
 

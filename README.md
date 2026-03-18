@@ -114,6 +114,14 @@ cargo run --bin quicklaunch_helper -- --summary
 ```
 
 QuickLaunch payload now includes group + starred + last-updated timestamp for real-time menu indicators.
+Helper command queue is also supported for external menu integrations:
+
+```bash
+cargo run --bin quicklaunch_helper -- --enqueue-action start id-1,id-2
+cargo run --bin quicklaunch_helper -- --drain-actions
+```
+
+When QuickLaunch sync is enabled, LaunchPad drains queued actions on refresh and executes them through the same action service used by the main UI.
 
 ### Run
 
