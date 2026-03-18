@@ -92,7 +92,7 @@ fn delete_runs_bootout_then_removes_file() {
 
     assert_eq!(
         launchctl.take_calls(),
-        vec!["bootout:gui/501:/tmp/com.demo.agent.plist".to_string()]
+        vec!["bootout:gui/501:/Users/test/Library/LaunchAgents/com.demo.agent.plist".to_string()]
     );
     assert_eq!(fs_ops.removed_paths(), vec![job.path.clone()]);
 }
@@ -127,11 +127,30 @@ fn delete_fails_when_capability_disabled() {
     assert!(fs_ops.removed_paths().is_empty());
 }
 
+#[test]
+fn delete_fails_when_path_is_not_whitelisted() {
+    let launchctl = Arc::new(MockLaunchctl::default());
+    let fs_ops = Arc::new(MockFsOps::default());
+    let service = DeleteService::new(launchctl.clone(), fs_ops.clone(), 501);
+    let mut job = delete_enabled_job();
+    job.path = PathBuf::from("/tmp/com.demo.agent.plist");
+
+    let err = service
+        .delete(&job)
+        .expect_err("non-whitelisted path should fail");
+    match err {
+        AppError::Validation(reason) => assert!(reason.contains("outside the allowed launchd")),
+        other => panic!("unexpected error: {other}"),
+    }
+    assert!(launchctl.take_calls().is_empty());
+    assert!(fs_ops.removed_paths().is_empty());
+}
+
 fn delete_enabled_job() -> JobSummary {
     JobSummary {
         id: "job-id".to_string(),
         label: "com.demo.agent".to_string(),
-        path: PathBuf::from("/tmp/com.demo.agent.plist"),
+        path: PathBuf::from("/Users/test/Library/LaunchAgents/com.demo.agent.plist"),
         scope: JobScope::UserAgent,
         status: JobStatus::Loaded,
         capabilities: JobCapabilities {
