@@ -55,6 +55,7 @@ LaunchPad currently includes these core capabilities:
 11. **Command palette (Raycast-style interaction)**:
    - run commands from a single input (`refresh`, `start`, `enable`, `new user`, `save`, `logs`)
    - batch starred controls (`start starred`, `stop starred`, `enable starred`, etc.)
+   - AI provider commands (`providers`, `provider <name>`)
 
 ## Tech Stack
 

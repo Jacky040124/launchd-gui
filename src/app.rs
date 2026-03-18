@@ -368,6 +368,34 @@ impl AppController {
             return;
         }
 
+        if let Some(provider_name) = normalized.strip_prefix("provider ") {
+            let provider_name = provider_name.trim();
+            if provider_name.is_empty() {
+                ui.set_status_message("Usage: provider <name>".into());
+                return;
+            }
+            if self.ai_service.set_active_provider(provider_name) {
+                self.sync_editor_to_ui(ui);
+                ui.set_status_message(format!("Switched AI provider to {provider_name}.").into());
+            } else {
+                let available = self.ai_service.available_providers().join(", ");
+                ui.set_status_message(
+                    format!(
+                        "Unknown provider '{}'. Available: {}",
+                        provider_name, available
+                    )
+                    .into(),
+                );
+            }
+            return;
+        }
+
+        if normalized == "providers" {
+            let available = self.ai_service.available_providers().join(", ");
+            ui.set_status_message(format!("Available AI providers: {}", available).into());
+            return;
+        }
+
         match normalized.as_str() {
             "refresh" => self.refresh(ui),
             "start" => self.trigger(ui, TriggerAction::Start),

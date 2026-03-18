@@ -198,6 +198,7 @@ Expected:
 4. Run `save` after editing fields and verify save/create result.
 5. Run `logs` and verify logs panel refreshes.
 6. Star two controllable jobs, then run `start starred` (or `stop starred`) and verify batch execution feedback.
+7. Run `providers`, then `provider anthropic` (or any configured provider) and verify status message reflects provider switching.
 
 Expected:
 - Commands execute the same actions as direct buttons.
