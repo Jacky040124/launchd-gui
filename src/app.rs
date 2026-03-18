@@ -377,6 +377,12 @@ impl AppController {
             "disable" => self.trigger(ui, TriggerAction::Disable),
             "load" => self.trigger(ui, TriggerAction::Load),
             "unload" => self.trigger(ui, TriggerAction::Unload),
+            "start starred" => self.trigger_starred_batch(ui, TriggerAction::Start),
+            "stop starred" => self.trigger_starred_batch(ui, TriggerAction::Stop),
+            "enable starred" => self.trigger_starred_batch(ui, TriggerAction::Enable),
+            "disable starred" => self.trigger_starred_batch(ui, TriggerAction::Disable),
+            "load starred" => self.trigger_starred_batch(ui, TriggerAction::Load),
+            "unload starred" => self.trigger_starred_batch(ui, TriggerAction::Unload),
             "save" => self.save_editor(ui),
             "logs" => self.load_recent_logs(ui),
             "star" | "unstar" => self.toggle_star(ui),
@@ -385,12 +391,64 @@ impl AppController {
             _ => {
                 ui.set_status_message(
                     format!(
-                        "Unknown command '{}'. Try: refresh/start/stop/enable/load/new user/save/logs",
+                        "Unknown command '{}'. Try: refresh/start/stop/enable/load/new user/save/logs/start starred",
                         normalized
                     )
                     .into(),
                 );
             }
+        }
+    }
+
+    fn trigger_starred_batch(&mut self, ui: &MainWindow, action: TriggerAction) {
+        let targets = self
+            .jobs
+            .iter()
+            .filter(|job| job.is_starred && job.capabilities.can_trigger)
+            .cloned()
+            .collect::<Vec<_>>();
+        if targets.is_empty() {
+            ui.set_status_message("No triggerable starred jobs found.".into());
+            return;
+        }
+
+        let mut success = 0usize;
+        let mut failed = 0usize;
+        let mut first_error = None;
+        for job in targets {
+            match self.action_service.execute(&job, action) {
+                Ok(_) => success += 1,
+                Err(err) => {
+                    failed += 1;
+                    if first_error.is_none() {
+                        first_error = Some(format!("{}: {err}", job.label));
+                    }
+                }
+            }
+        }
+
+        self.refresh(ui);
+        if let Some(error) = first_error {
+            ui.set_status_message(
+                format!(
+                    "Batch {} finished: {} success, {} failed. First error: {}",
+                    action.as_str(),
+                    success,
+                    failed,
+                    error
+                )
+                .into(),
+            );
+        } else {
+            ui.set_status_message(
+                format!(
+                    "Batch {} finished: {} success, {} failed.",
+                    action.as_str(),
+                    success,
+                    failed
+                )
+                .into(),
+            );
         }
     }
 
