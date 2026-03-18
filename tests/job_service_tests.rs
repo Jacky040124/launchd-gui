@@ -1,10 +1,12 @@
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use launchpad::adapter::fs_scan::FileScanner;
 use launchpad::adapter::launchctl::LaunchctlClient;
 use launchpad::adapter::plist_reader::PlistReader;
 use launchpad::domain::job::JobScope;
+use launchpad::domain::job::JobSummary;
+use launchpad::domain::job_detail::JobRuntimeDetails;
 use launchpad::domain::status::JobStatus;
 use launchpad::error::{AppError, AppResult};
 use launchpad::service::job_service::JobService;
@@ -27,12 +29,33 @@ impl PlistReader for MockPlistReader {
 
 #[derive(Debug)]
 struct MockLaunchctl {
+    list_output: String,
+    list_error: Option<String>,
     print_output: String,
     print_error: Option<String>,
+    calls: Mutex<Vec<String>>,
 }
 
 impl LaunchctlClient for MockLaunchctl {
+    fn list(&self) -> AppResult<String> {
+        self.calls
+            .lock()
+            .expect("lock calls")
+            .push("list".to_string());
+        if let Some(stderr) = &self.list_error {
+            return Err(AppError::CommandFailed {
+                command: "launchctl list".to_string(),
+                stderr: stderr.clone(),
+            });
+        }
+        Ok(self.list_output.clone())
+    }
+
     fn print(&self, _target: &str) -> AppResult<String> {
+        self.calls
+            .lock()
+            .expect("lock calls")
+            .push("print".to_string());
         if let Some(stderr) = &self.print_error {
             return Err(AppError::CommandFailed {
                 command: "launchctl print ...".to_string(),
@@ -60,29 +83,39 @@ impl LaunchctlClient for MockLaunchctl {
 }
 
 #[test]
-fn list_jobs_maps_running_status() {
+fn list_jobs_maps_running_and_loaded_status_from_launchctl_list() {
     let temp = TempDir::new().expect("temp dir");
     let plist_path = write_dummy_plist(temp.path(), "com.demo.running.plist");
+    write_dummy_plist(temp.path(), "com.demo.idle.plist");
 
     let scanner = FileScanner::with_targets(vec![(temp.path().to_path_buf(), JobScope::UserAgent)]);
     let plist_reader = Arc::new(MockPlistReader {
-        label: Some("com.demo.running".to_string()),
+        label: None,
         fail: false,
     });
     let launchctl = Arc::new(MockLaunchctl {
-        print_output: "state = running".to_string(),
+        list_output: "PID\tStatus\tLabel\n321\t0\tcom.demo.running\n-\t0\tcom.demo.idle\n".into(),
+        list_error: None,
+        print_output: String::new(),
         print_error: None,
+        calls: Mutex::new(Vec::new()),
     });
 
     let service = JobService::new(scanner, plist_reader, launchctl, 501);
     let jobs = service.list_jobs().expect("list jobs");
 
-    assert_eq!(jobs.len(), 1);
-    let job = &jobs[0];
-    assert_eq!(job.label, "com.demo.running");
-    assert_eq!(job.path, plist_path);
-    assert_eq!(job.status, JobStatus::Running);
-    assert!(job.capabilities.can_trigger);
+    let running = jobs
+        .iter()
+        .find(|job| job.label == "com.demo.running")
+        .expect("running job");
+    assert_eq!(running.path, plist_path);
+    assert_eq!(running.status, JobStatus::Running);
+
+    let idle = jobs
+        .iter()
+        .find(|job| job.label == "com.demo.idle")
+        .expect("idle job");
+    assert_eq!(idle.status, JobStatus::Loaded);
 }
 
 #[test]
@@ -96,8 +129,11 @@ fn list_jobs_uses_filename_when_label_missing() {
         fail: false,
     });
     let launchctl = Arc::new(MockLaunchctl {
-        print_output: "state = waiting".to_string(),
+        list_output: "PID\tStatus\tLabel\n-\t0\tcom.demo.fallback\n".to_string(),
+        list_error: None,
+        print_output: String::new(),
         print_error: None,
+        calls: Mutex::new(Vec::new()),
     });
 
     let service = JobService::new(scanner, plist_reader, launchctl, 501);
@@ -118,8 +154,11 @@ fn list_jobs_gracefully_handles_plist_parse_failure() {
         fail: true,
     });
     let launchctl = Arc::new(MockLaunchctl {
+        list_output: String::new(),
+        list_error: None,
         print_output: String::new(),
         print_error: None,
+        calls: Mutex::new(Vec::new()),
     });
 
     let service = JobService::new(scanner, plist_reader, launchctl, 501);
@@ -140,8 +179,11 @@ fn list_jobs_maps_not_loaded_to_unknown_without_failing() {
         fail: false,
     });
     let launchctl = Arc::new(MockLaunchctl {
+        list_output: String::new(),
+        list_error: Some("could not query list".to_string()),
         print_output: String::new(),
-        print_error: Some("Could not find service".to_string()),
+        print_error: None,
+        calls: Mutex::new(Vec::new()),
     });
 
     let service = JobService::new(scanner, plist_reader, launchctl, 501);
@@ -151,8 +193,88 @@ fn list_jobs_maps_not_loaded_to_unknown_without_failing() {
     assert!(jobs[0].error.is_none());
 }
 
+#[test]
+fn list_jobs_does_not_call_print_per_job() {
+    let temp = TempDir::new().expect("temp dir");
+    write_dummy_plist(temp.path(), "com.demo.a.plist");
+    write_dummy_plist(temp.path(), "com.demo.b.plist");
+
+    let scanner = FileScanner::with_targets(vec![(temp.path().to_path_buf(), JobScope::UserAgent)]);
+    let plist_reader = Arc::new(MockPlistReader {
+        label: None,
+        fail: false,
+    });
+    let launchctl = Arc::new(MockLaunchctl {
+        list_output: "PID\tStatus\tLabel\n-\t0\tcom.demo.a\n-\t0\tcom.demo.b\n".to_string(),
+        list_error: None,
+        print_output: String::new(),
+        print_error: None,
+        calls: Mutex::new(Vec::new()),
+    });
+
+    let service = JobService::new(scanner, plist_reader, launchctl.clone(), 501);
+    let _ = service.list_jobs().expect("list jobs");
+
+    let calls = launchctl.calls.lock().expect("lock calls").clone();
+    assert_eq!(calls, vec!["list".to_string()]);
+}
+
+#[test]
+fn fetch_job_details_uses_launchctl_print() {
+    let temp = TempDir::new().expect("temp dir");
+    let path = write_dummy_plist(temp.path(), "com.demo.detail.plist");
+    let scanner = FileScanner::with_targets(vec![(temp.path().to_path_buf(), JobScope::UserAgent)]);
+    let plist_reader = Arc::new(MockPlistReader {
+        label: Some("com.demo.detail".to_string()),
+        fail: false,
+    });
+    let launchctl = Arc::new(MockLaunchctl {
+        list_output: String::new(),
+        list_error: None,
+        print_output: "pid = 902\nlast exit code = 0\nlast run = 2026-03-18 18:33:20 +0000\n"
+            .to_string(),
+        print_error: None,
+        calls: Mutex::new(Vec::new()),
+    });
+    let service = JobService::new(scanner, plist_reader, launchctl.clone(), 501);
+
+    let details = service
+        .fetch_job_details(&job_fixture("com.demo.detail", path))
+        .expect("fetch details");
+    assert_eq!(
+        details,
+        JobRuntimeDetails {
+            pid: Some("902".to_string()),
+            last_exit_status: Some("0".to_string()),
+            last_run: Some("2026-03-18 18:33:20 +0000".to_string()),
+            raw_hint: None,
+        }
+    );
+
+    let calls = launchctl.calls.lock().expect("lock calls").clone();
+    assert_eq!(calls, vec!["print".to_string()]);
+}
+
 fn write_dummy_plist(dir: &Path, filename: &str) -> PathBuf {
     let path = dir.join(filename);
     std::fs::write(&path, "dummy").expect("write plist fixture");
     path
+}
+
+fn job_fixture(label: &str, path: PathBuf) -> JobSummary {
+    JobSummary {
+        id: label.to_string(),
+        label: label.to_string(),
+        path,
+        scope: JobScope::UserAgent,
+        status: JobStatus::Unknown,
+        is_starred: false,
+        capabilities: launchpad::domain::job::JobCapabilities {
+            can_trigger: true,
+            can_delete: true,
+            trigger_reason: None,
+            delete_reason: None,
+        },
+        error: None,
+    }
 }

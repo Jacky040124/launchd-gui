@@ -28,6 +28,10 @@ impl MockLaunchctl {
 }
 
 impl LaunchctlClient for MockLaunchctl {
+    fn list(&self) -> AppResult<String> {
+        Ok(String::new())
+    }
+
     fn print(&self, _target: &str) -> AppResult<String> {
         Ok(String::new())
     }
@@ -153,6 +157,7 @@ fn delete_enabled_job() -> JobSummary {
         path: PathBuf::from("/Users/test/Library/LaunchAgents/com.demo.agent.plist"),
         scope: JobScope::UserAgent,
         status: JobStatus::Loaded,
+        is_starred: false,
         capabilities: JobCapabilities {
             can_trigger: true,
             can_delete: true,

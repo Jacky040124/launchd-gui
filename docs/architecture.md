@@ -6,8 +6,10 @@ LaunchPad is split into three layers to keep launchd logic testable and UI light
 
 - `job.rs`
   - `JobScope`: UserAgent / GlobalAgent / SystemDaemon
-  - `JobSummary`: UI-facing aggregate model
+  - `JobSummary`: UI-facing aggregate model (includes `is_starred`)
   - `JobCapabilities`: `can_trigger`, `can_delete` with reason messages
+- `job_detail.rs`
+  - `JobRuntimeDetails`: on-demand runtime diagnostics (`pid`, `last_exit_status`, `last_run`, `raw_hint`)
 - `status.rs`
   - Normalized status enum and parser from `launchctl print` output
 - `action.rs`
@@ -23,15 +25,22 @@ This layer contains no process execution and is suitable for deterministic tests
   - extracts `Label` from plist files
 - `launchctl.rs`
   - wraps `launchctl` command invocations and error normalization
+  - parses `launchctl list` bulk status output
+  - parses `launchctl print` best-effort runtime details
 - `fs_ops.rs`
   - file deletion abstraction
+- `star_store.rs`
+  - persistent star store abstraction + JSON implementation
+- `clipboard.rs`
+  - clipboard abstraction (`pbcopy` on macOS)
 
 Adapters are trait-based, so tests can inject mock behavior.
 
 ## 3) Service Layer (`src/service`)
 
 - `job_service.rs`
-  - orchestration for scan + read label + query status + capability derivation
+  - orchestration for scan + read label + bulk status query + capability derivation
+  - on-demand runtime detail fetch per selected job
 - `action_service.rs`
   - validates action capability and executes trigger commands
 - `delete_service.rs`
@@ -39,13 +48,19 @@ Adapters are trait-based, so tests can inject mock behavior.
     1. capability check
     2. `bootout`
     3. delete plist
+- `star_service.rs`
+  - loads persisted stars
+  - toggles star/unstar and saves state
+  - applies star state to job list models
 
 ## UI Layer (`ui/main.slint` + `src/main.rs`)
 
 Slint provides a minimal desktop UI:
 
-- list of jobs
-- selected job details
+- virtualized list of jobs (`ListView`)
+- selected job details + expandable advanced diagnostics
+- star/unstar + starred-only filter
+- copy details action
 - action buttons
 - status message area
 

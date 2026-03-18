@@ -18,6 +18,16 @@ LaunchPad currently focuses on three core operations:
 3. **Delete flow** with safety guard:
    - two-step confirmation
    - capability checks (scope + file permission)
+4. **Job details + diagnostics**:
+   - fast list status via `launchctl list`
+   - on-demand deep details via `launchctl print`
+   - runtime hints including `pid`, `last exit`, `last run` (best-effort)
+5. **Starred jobs + persistence**:
+   - star/unstar selected jobs
+   - optional starred-only filter
+   - persistent star store in user config
+6. **Copy selected job details**:
+   - multi-line diagnostic format for quick sharing/debugging
 
 The app intentionally does **not** include job creation/editing in this iteration.
 
@@ -70,12 +80,26 @@ cargo test --all-targets
 - Real launchd behavior can only be fully validated on **macOS**.
 - On Linux, tests validate parsing/flow/control logic through mocks.
 - System daemons are intentionally non-destructive (read-only capabilities).
+- Clipboard copy uses `pbcopy` on macOS builds.
+
+## Performance Strategy
+
+LaunchPad uses a layered performance approach:
+
+1. **Renderer**:
+   - macOS builds use Slint `renderer-skia` (GPU path)
+   - non-macOS builds keep software renderer for CI/dev portability
+2. **Virtualized list UI**:
+   - job list rendered with Slint `ListView` to avoid creating all row widgets at once
+3. **Cheaper refresh path**:
+   - refresh uses one `launchctl list` call for bulk status
+   - expensive `launchctl print` is deferred to selected-job details only
 
 ## Known Limitations
 
 - No create/edit wizard for plist jobs in current MVP.
 - UI currently focuses on list/detail/action flow and does not include menu bar integration.
-- `launchctl` output formats can vary across macOS versions; parser is resilient but not exhaustive.
+- `launchctl` output formats can vary across macOS versions; detail parsing is resilient but best-effort.
 
 ## Next Roadmap
 
