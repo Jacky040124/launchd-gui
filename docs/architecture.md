@@ -34,6 +34,9 @@ This layer contains no process execution and is suitable for deterministic tests
   - serializes XML preview
 - `log_stream.rs`
   - wraps `log show` for selected-label recent logs (macOS)
+- `ai/`
+  - provider abstraction and provider-specific adapters
+  - includes Claude Agent sidecar bridge and provider stubs
 - `launchctl.rs`
   - wraps `launchctl` command invocations and error normalization
   - parses `launchctl list` bulk status output
@@ -72,6 +75,8 @@ Adapters are trait-based, so tests can inject mock behavior.
   - static rule analysis for plist validity and safety hints
 - `log_service.rs`
   - recent-log query orchestration for selected jobs
+- `ai_service.rs`
+  - AI suggestion orchestration (sidecar-first with local heuristic fallback)
 
 ## UI Layer (`ui/main.slint` + `src/main.rs`)
 
@@ -85,6 +90,7 @@ Slint provides a minimal desktop UI:
 - real-time diagnostics panel for editor changes
 - new user/global plist creation flow
 - built-in recent log viewer for selected job
+- AI suggestion panel for natural-language launchd guidance
 - copy details action
 - action buttons
 - status message area

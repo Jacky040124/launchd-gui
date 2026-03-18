@@ -43,6 +43,10 @@ LaunchPad currently includes these core capabilities:
    - create new user/global plist from the app
 9. **Built-in log viewer (selected job)**:
    - fetch recent logs by selected label (no need to open Console.app)
+10. **AI suggestion panel (native workflow scaffold)**:
+   - natural-language prompt for launchd edits
+   - Claude Agent sidecar integration hook
+   - local heuristic fallback when remote provider unavailable
 
 ## Tech Stack
 
@@ -50,6 +54,7 @@ LaunchPad currently includes these core capabilities:
 - **Slint** (native desktop UI, no web runtime)
 - `plist` crate for plist parsing and XML serialization
 - `launchctl` command adapter for status/actions
+- pluggable AI provider abstraction (sidecar-first)
 
 ## Project Structure
 
@@ -111,6 +116,7 @@ LaunchPad uses a layered performance approach:
 ## Known Limitations
 
 - No full expert editor for arbitrary nested keys yet (standard editor first).
+- AI providers are scaffolded; remote API wiring is still being expanded.
 - UI currently focuses on list/detail/action flow and does not include menu bar integration.
 - `launchctl` output formats can vary across macOS versions; detail parsing is resilient but best-effort.
 

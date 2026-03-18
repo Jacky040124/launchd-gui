@@ -18,6 +18,7 @@ use launchpad::domain::job_detail::JobRuntimeDetails;
 use launchpad::domain::plist_document::StandardPlistDocument;
 use launchpad::domain::status::JobStatus;
 use launchpad::service::action_service::ActionService;
+use launchpad::service::ai_service::AiService;
 use launchpad::service::delete_service::DeleteService;
 use launchpad::service::diagnostic_service::DiagnosticService;
 use launchpad::service::job_service::JobService;
@@ -83,6 +84,8 @@ struct EditorState {
     environment_variables: String,
     xml_preview: String,
     diagnostics_text: String,
+    ai_prompt: String,
+    ai_response: String,
 }
 
 impl EditorState {
@@ -101,6 +104,8 @@ impl EditorState {
             environment_variables: plist_service.format_env_pairs(&document.environment_variables),
             xml_preview: String::new(),
             diagnostics_text: String::new(),
+            ai_prompt: String::new(),
+            ai_response: String::new(),
         }
     }
 }
@@ -111,6 +116,7 @@ struct AppController {
     delete_service: DeleteService,
     diagnostic_service: DiagnosticService,
     log_service: LogService,
+    ai_service: AiService,
     plist_service: PlistService,
     star_service: StarService,
     clipboard: Arc<dyn ClipboardClient>,
@@ -149,6 +155,7 @@ impl AppController {
             delete_service: DeleteService::new(launchctl, fs_ops, uid),
             diagnostic_service: DiagnosticService,
             log_service: LogService::new(Arc::new(SystemLogStreamClient)),
+            ai_service: AiService::new(),
             plist_service: PlistService::new(Arc::new(SystemPlistDocumentStore)),
             star_service,
             clipboard,
@@ -520,6 +527,50 @@ impl AppController {
         self.refresh_editor_preview(ui);
     }
 
+    fn ai_prompt_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.ai_prompt = value.to_string();
+        ui.set_ai_prompt(self.editor_state.ai_prompt.clone().into());
+    }
+
+    fn run_ai_assistant(&mut self, ui: &MainWindow) {
+        if self.editor_state.ai_prompt.trim().is_empty() {
+            ui.set_status_message("Please enter AI prompt first.".into());
+            return;
+        }
+        if self.editor_state.xml_preview.trim().is_empty() {
+            self.refresh_editor_preview(ui);
+        }
+
+        match self
+            .ai_service
+            .suggest_edit(&self.editor_state.ai_prompt, &self.editor_state.xml_preview)
+        {
+            Ok(response) => {
+                let mut lines = vec![format!(
+                    "Provider: {}\nSummary: {}",
+                    response.provider, response.summary
+                )];
+                if !response.suggested_patch_notes.is_empty() {
+                    lines.push("Suggestions:".to_string());
+                    lines.extend(
+                        response
+                            .suggested_patch_notes
+                            .into_iter()
+                            .map(|item| format!("- {item}")),
+                    );
+                }
+                self.editor_state.ai_response = lines.join("\n");
+                ui.set_ai_response(self.editor_state.ai_response.clone().into());
+                ui.set_status_message("AI suggestions updated.".into());
+            }
+            Err(err) => {
+                self.editor_state.ai_response = format!("AI request failed: {err}");
+                ui.set_ai_response(self.editor_state.ai_response.clone().into());
+                ui.set_status_message(format!("AI request failed: {err}").into());
+            }
+        }
+    }
+
     fn toggle_editor_run_at_load(&mut self, ui: &MainWindow) {
         self.editor_state.run_at_load = !self.editor_state.run_at_load;
         ui.set_editor_run_at_load(self.editor_state.run_at_load);
@@ -725,6 +776,8 @@ impl AppController {
         ui.set_editor_keep_alive(self.editor_state.keep_alive);
         ui.set_editor_xml_preview(self.editor_state.xml_preview.clone().into());
         ui.set_editor_diagnostics_text(self.editor_state.diagnostics_text.clone().into());
+        ui.set_ai_prompt(self.editor_state.ai_prompt.clone().into());
+        ui.set_ai_response(self.editor_state.ai_response.clone().into());
         let target_text = match &self.editor_target {
             Some(EditorTarget::Existing { index }) => self
                 .jobs
@@ -1299,6 +1352,28 @@ pub fn run() -> Result<(), slint::PlatformError> {
                 controller
                     .borrow_mut()
                     .editor_env_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_ai_prompt_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .ai_prompt_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_ai_request_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().run_ai_assistant(&ui);
             }
         });
     }

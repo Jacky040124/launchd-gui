@@ -1,4 +1,5 @@
 pub mod action_service;
+pub mod ai_service;
 pub mod delete_service;
 pub mod diagnostic_service;
 pub mod job_service;

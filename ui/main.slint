@@ -43,6 +43,8 @@ export component MainWindow inherits Window {
     in-out property <string> editor_xml_preview: "";
     in-out property <string> editor_diagnostics_text: "";
     in-out property <string> log_view_text: "";
+    in-out property <string> ai_prompt: "";
+    in-out property <string> ai_response: "";
 
     callback refresh_requested();
     callback select_job(int);
@@ -73,6 +75,8 @@ export component MainWindow inherits Window {
     callback save_editor_requested();
     callback new_job_requested(string);
     callback refresh_logs_requested();
+    callback ai_prompt_changed(string);
+    callback ai_request_requested();
 
     title: "LaunchPad";
     width: 1120px;
@@ -522,6 +526,37 @@ export component MainWindow inherits Window {
                             text: root.log_view_text;
                             wrap: word-wrap;
                             color: #344054;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    border-width: 1px;
+                    border-color: #b2ddff;
+                    border-radius: 8px;
+                    background: #f5faff;
+                    VerticalBox {
+                        padding: 8px;
+                        spacing: 6px;
+                        HorizontalBox {
+                            spacing: 8px;
+                            LineEdit {
+                                width: 720px;
+                                enabled: !root.busy;
+                                text <=> root.ai_prompt;
+                                placeholder-text: "Ask AI to modify this launchd job...";
+                                edited(value) => { root.ai_prompt_changed(value); }
+                            }
+                            Button {
+                                text: "AI Analyze";
+                                enabled: !root.busy;
+                                clicked => { root.ai_request_requested(); }
+                            }
+                        }
+                        Text {
+                            text: root.ai_response;
+                            wrap: word-wrap;
+                            color: #175cd3;
                         }
                     }
                 }

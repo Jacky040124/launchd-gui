@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod clipboard;
 pub mod fs_ops;
 pub mod fs_scan;
