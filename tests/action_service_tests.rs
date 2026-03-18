@@ -20,6 +20,10 @@ impl MockLaunchctl {
 }
 
 impl LaunchctlClient for MockLaunchctl {
+    fn list(&self) -> AppResult<String> {
+        Ok(String::new())
+    }
+
     fn print(&self, _target: &str) -> AppResult<String> {
         Ok(String::new())
     }
@@ -116,6 +120,7 @@ fn job_fixture(can_trigger: bool) -> JobSummary {
         path: PathBuf::from("/tmp/com.demo.agent.plist"),
         scope: JobScope::UserAgent,
         status: JobStatus::Loaded,
+        is_starred: false,
         capabilities: JobCapabilities {
             can_trigger,
             can_delete: true,

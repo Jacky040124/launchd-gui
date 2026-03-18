@@ -1,4 +1,4 @@
-import { Button, HorizontalBox, LineEdit, ScrollView, VerticalBox } from "std-widgets.slint";
+import { Button, HorizontalBox, LineEdit, ListView, VerticalBox } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
     in-out property <[string]> job_lines: [];
@@ -12,7 +12,15 @@ export component MainWindow inherits Window {
     in-out property <string> detail_scope: "";
     in-out property <string> detail_status: "";
     in-out property <string> detail_path: "";
+    in-out property <string> detail_pid: "";
+    in-out property <string> detail_last_exit: "";
+    in-out property <string> detail_last_run: "";
+    in-out property <string> detail_runtime_hint: "";
     in-out property <string> detail_error: "";
+    in-out property <bool> is_starred: false;
+    in-out property <bool> advanced_detail_visible: false;
+    in-out property <bool> show_starred_only: false;
+    in-out property <int> selected_job_row: -1;
     in-out property <bool> can_trigger: false;
     in-out property <bool> can_delete: false;
 
@@ -25,36 +33,48 @@ export component MainWindow inherits Window {
     callback query_changed(string);
     callback scope_filter_requested(string);
     callback clear_filters_requested();
+    callback toggle_star_requested();
+    callback copy_detail_requested();
+    callback toggle_advanced_requested();
+    callback star_filter_toggled(bool);
 
     title: "LaunchPad";
-    width: 980px;
-    height: 640px;
+    width: 1120px;
+    height: 700px;
+    background: #f5f7fb;
 
     VerticalBox {
-        spacing: 10px;
-        padding: 12px;
+        spacing: 12px;
+        padding: 14px;
 
         HorizontalBox {
-            spacing: 8px;
+            spacing: 10px;
             Button {
                 text: "Refresh";
                 enabled: !root.busy;
                 clicked => { root.refresh_requested(); }
             }
             Text {
-                text: root.busy ? "LaunchPad · working..." : "LaunchPad · minimalist launchd hub";
+                text: root.busy ? "LaunchPad · refreshing jobs..." : "LaunchPad · launchd control center";
                 vertical-alignment: center;
+                font-size: 15px;
+                color: #182230;
             }
         }
 
         HorizontalBox {
             spacing: 8px;
             LineEdit {
-                width: 280px;
+                width: 300px;
                 enabled: !root.busy;
                 text <=> root.query_text;
                 placeholder-text: "Search label or path";
                 edited(text) => { root.query_changed(text); }
+            }
+            Button {
+                text: root.show_starred_only ? "★ Starred only" : "☆ Starred only";
+                enabled: !root.busy;
+                clicked => { root.star_filter_toggled(!root.show_starred_only); }
             }
             Button {
                 text: "All";
@@ -79,43 +99,135 @@ export component MainWindow inherits Window {
             Text {
                 text: "Filter: " + root.active_filter_text;
                 vertical-alignment: center;
+                color: #475467;
             }
         }
 
-        Rectangle {
-            border-width: 1px;
-            border-color: #d7d7d7;
-            border-radius: 6px;
-            height: 330px;
-            clip: true;
+        HorizontalBox {
+            spacing: 12px;
 
-            ScrollView {
+            Rectangle {
+                border-width: 1px;
+                border-color: #d0d5dd;
+                border-radius: 10px;
+                background: #ffffff;
+                horizontal-stretch: 0.9;
+                clip: true;
+
                 VerticalBox {
-                    spacing: 6px;
                     padding: 8px;
-                    for line[index] in root.job_lines : Button {
-                        text: line;
-                        horizontal-stretch: 1;
-                        clicked => { root.select_job(index); }
+                    spacing: 8px;
+
+                    Text {
+                        text: "Jobs";
+                        font-weight: 700;
+                        color: #182230;
+                    }
+
+                    Rectangle {
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: #eaecf0;
+                        clip: true;
+                        vertical-stretch: 1;
+
+                        ListView {
+                            for line[index] in root.job_lines : Rectangle {
+                                height: 40px;
+                                border-radius: 6px;
+                                x: 4px;
+                                width: parent.width - 8px;
+                                background: root.selected_job_row == index ? #e0ebff : #ffffff;
+                                animate background { duration: 160ms; easing: ease-in-out; }
+
+                                Text {
+                                    text: line;
+                                    x: 10px;
+                                    y: (parent.height - self.height) / 2;
+                                    color: root.selected_job_row == index ? #12326b : #344054;
+                                    font-weight: root.selected_job_row == index ? 600 : 400;
+                                }
+
+                                TouchArea {
+                                    clicked => { root.select_job(index); }
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        Rectangle {
-            border-width: 1px;
-            border-color: #d7d7d7;
-            border-radius: 6px;
+            Rectangle {
+                border-width: 1px;
+                border-color: #d0d5dd;
+                border-radius: 10px;
+                background: #ffffff;
+                horizontal-stretch: 1.1;
 
-            VerticalBox {
-                padding: 8px;
-                spacing: 4px;
-                Text { text: "Selected Job"; font-weight: 600; }
-                Text { text: "Label: " + root.detail_label; }
-                Text { text: "Scope: " + root.detail_scope; }
-                Text { text: "Status: " + root.detail_status; }
-                Text { text: "Path: " + root.detail_path; }
-                Text { text: root.detail_error; color: #b42318; }
+                VerticalBox {
+                    padding: 12px;
+                    spacing: 8px;
+                    Text {
+                        text: "Selected Job";
+                        font-weight: 700;
+                        color: #182230;
+                    }
+
+                    Rectangle {
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: #eaecf0;
+                        background: #f8faff;
+                        VerticalBox {
+                            padding: 10px;
+                            spacing: 4px;
+                            Text { text: "Label: " + root.detail_label; color: #101828; }
+                            Text { text: "Scope: " + root.detail_scope; color: #344054; }
+                            Text { text: "Status: " + root.detail_status; color: #344054; }
+                            Text { text: "Path: " + root.detail_path; color: #344054; wrap: word-wrap; }
+                            Text { text: root.detail_error; color: #b42318; wrap: word-wrap; }
+                        }
+                    }
+
+                    HorizontalBox {
+                        spacing: 8px;
+                        Button {
+                            text: root.is_starred ? "Unstar" : "Star";
+                            enabled: !root.busy;
+                            clicked => { root.toggle_star_requested(); }
+                        }
+                        Button {
+                            text: "Copy Details";
+                            enabled: !root.busy;
+                            clicked => { root.copy_detail_requested(); }
+                        }
+                        Button {
+                            text: root.advanced_detail_visible ? "Hide Advanced" : "Show Advanced";
+                            enabled: !root.busy;
+                            clicked => { root.toggle_advanced_requested(); }
+                        }
+                    }
+
+                    Rectangle {
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: #eaecf0;
+                        background: #fcfcfd;
+                        clip: true;
+                        height: root.advanced_detail_visible ? 116px : 0px;
+                        opacity: root.advanced_detail_visible ? 1 : 0;
+                        animate height, opacity { duration: 180ms; easing: ease-in-out; }
+
+                        VerticalBox {
+                            padding: 10px;
+                            spacing: 4px;
+                            Text { text: "PID: " + root.detail_pid; color: #344054; }
+                            Text { text: "Last Exit: " + root.detail_last_exit; color: #344054; }
+                            Text { text: "Last Run: " + root.detail_last_run; color: #344054; }
+                            Text { text: root.detail_runtime_hint; color: #475467; wrap: word-wrap; }
+                        }
+                    }
+                }
             }
         }
 
@@ -147,11 +259,13 @@ export component MainWindow inherits Window {
             visible: root.confirm_delete_visible;
             border-width: 1px;
             border-color: #fecdca;
-            border-radius: 6px;
+            border-radius: 8px;
             background: #fffbfa;
+            opacity: root.confirm_delete_visible ? 1 : 0;
+            animate opacity { duration: 140ms; easing: ease-in-out; }
 
             VerticalBox {
-                padding: 8px;
+                padding: 10px;
                 spacing: 6px;
                 Text {
                     text: "Delete '" + root.confirm_delete_label + "' ?";
@@ -181,12 +295,14 @@ export component MainWindow inherits Window {
         Rectangle {
             border-width: 1px;
             border-color: #ececec;
-            border-radius: 6px;
+            border-radius: 8px;
+            background: #ffffff;
             VerticalBox {
                 padding: 8px;
                 Text {
                     text: root.busy ? "Working..." : root.status_message;
                     wrap: word-wrap;
+                    color: root.busy ? #175cd3 : #344054;
                 }
             }
         }

@@ -1,6 +1,6 @@
 # macOS Manual Test Script (MVP)
 
-This checklist validates the current MVP scope: status read, trigger actions, delete.
+This checklist validates the current MVP scope: status read, trigger actions, delete, starred jobs, copy details, and advanced runtime details.
 
 ## Preconditions
 
@@ -29,6 +29,7 @@ This checklist validates the current MVP scope: status read, trigger actions, de
 Expected:
 - App does not crash if some plist is malformed.
 - Status text is shown (running/loaded/disabled/unknown).
+- Refresh remains responsive for medium-size job lists.
 
 ## B. Trigger Actions
 
@@ -80,3 +81,43 @@ Expected:
 Expected:
 - Search and scope filter can be combined.
 - Filter status text reflects both scope and query when both are set.
+
+## F. Starred Jobs + Starred-only Filter
+
+1. Select a user or global agent.
+2. Click **Star**.
+3. Verify:
+   - row displays `★`
+   - the details panel button changes to **Unstar**
+4. Enable **Starred only** filter.
+5. Verify only starred jobs remain visible.
+6. Click **Unstar** on the selected item while starred-only filter is enabled.
+
+Expected:
+- Item disappears from list after unstar when starred-only filter is on.
+- Refresh preserves current star state.
+
+## G. Copy Details + Advanced Runtime Panel
+
+1. Select a job.
+2. Click **Show Advanced**.
+3. Verify advanced fields are shown:
+   - PID
+   - Last Exit
+   - Last Run
+4. Click **Copy Details**.
+5. Paste into a text editor.
+
+Expected:
+- Copied payload is multi-line and human-readable.
+- Includes label/scope/status/path and runtime diagnostics.
+- If runtime fields are unavailable, output contains `N/A` or hint text instead of crashing.
+
+## H. Star Persistence
+
+1. Star one or more jobs.
+2. Quit LaunchPad.
+3. Launch LaunchPad again and click **Refresh**.
+
+Expected:
+- Previously starred jobs remain starred.

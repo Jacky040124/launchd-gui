@@ -2,9 +2,13 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::adapter::fs_scan::FileScanner;
-use crate::adapter::launchctl::{is_not_loaded_error, status_from_print_output, LaunchctlClient};
+use crate::adapter::launchctl::{
+    is_not_loaded_error, parse_list_output, parse_runtime_details_from_print_output,
+    LaunchctlClient,
+};
 use crate::adapter::plist_reader::PlistReader;
 use crate::domain::job::{compute_capabilities, JobSummary};
+use crate::domain::job_detail::JobRuntimeDetails;
 use crate::domain::status::JobStatus;
 use crate::error::{AppError, AppResult};
 
@@ -33,6 +37,11 @@ impl JobService {
     pub fn list_jobs(&self) -> AppResult<Vec<JobSummary>> {
         let scanned_files = self.scanner.scan()?;
         let mut jobs = Vec::with_capacity(scanned_files.len());
+        let list_status_by_label = self
+            .launchctl
+            .list()
+            .map(|output| parse_list_output(&output))
+            .unwrap_or_default();
 
         for (path, scope) in scanned_files {
             let mut error = None;
@@ -47,20 +56,10 @@ impl JobService {
 
             let status = if error.is_some() {
                 JobStatus::Unknown
+            } else if let Some(entry) = list_status_by_label.get(&label) {
+                entry.status()
             } else {
-                match self
-                    .launchctl
-                    .print(&scope.target_for_label(self.uid, &label))
-                {
-                    Ok(output) => status_from_print_output(&output),
-                    Err(AppError::CommandFailed { stderr, .. }) if is_not_loaded_error(&stderr) => {
-                        JobStatus::Unknown
-                    }
-                    Err(err) => {
-                        error = Some(err.to_string());
-                        JobStatus::Unknown
-                    }
-                }
+                JobStatus::Unknown
             };
 
             jobs.push(JobSummary {
@@ -69,6 +68,7 @@ impl JobService {
                 path: path.clone(),
                 scope: scope.clone(),
                 status,
+                is_starred: false,
                 capabilities: compute_capabilities(&scope, &path),
                 error,
             });
@@ -76,6 +76,20 @@ impl JobService {
 
         jobs.sort_by(|a, b| a.label.cmp(&b.label));
         Ok(jobs)
+    }
+
+    pub fn fetch_job_details(&self, job: &JobSummary) -> AppResult<JobRuntimeDetails> {
+        let target = job.scope.target_for_label(self.uid, &job.label);
+        match self.launchctl.print(&target) {
+            Ok(output) => Ok(parse_runtime_details_from_print_output(&output)),
+            Err(AppError::CommandFailed { stderr, .. }) if is_not_loaded_error(&stderr) => {
+                Ok(JobRuntimeDetails {
+                    raw_hint: Some("Service is not currently loaded".to_string()),
+                    ..JobRuntimeDetails::default()
+                })
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 

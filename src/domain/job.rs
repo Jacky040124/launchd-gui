@@ -57,6 +57,7 @@ pub struct JobSummary {
     pub path: PathBuf,
     pub scope: JobScope,
     pub status: JobStatus,
+    pub is_starred: bool,
     pub capabilities: JobCapabilities,
     pub error: Option<String>,
 }
@@ -67,8 +68,10 @@ impl JobSummary {
     }
 
     pub fn list_line(&self) -> String {
+        let starred = if self.is_starred { "★ " } else { "" };
         format!(
-            "{}  |  {}  |  {}",
+            "{}{}  |  {}  |  {}",
+            starred,
             self.label,
             self.scope.as_str(),
             self.status_text()
