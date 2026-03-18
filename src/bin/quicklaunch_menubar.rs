@@ -118,7 +118,8 @@ mod macos {
 
                     match queued {
                         Ok(message) => {
-                            let queued = format!("{message} (run LaunchPad refresh to apply)");
+                            let queued =
+                                format!("{message} (auto-applies shortly; refresh is optional)");
                             status_item.set_text(queued.clone());
                             let _ = tray.set_tooltip(Some(queued));
                         }

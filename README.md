@@ -101,6 +101,7 @@ tests/
   - `LAUNCHPAD_QUICKLAUNCH_STARRED_ONLY` (`true/false`, default true)
   - `LAUNCHPAD_QUICKLAUNCH_MAX_ITEMS` (default 12)
   - `LAUNCHPAD_QUICKLAUNCH_GROUP_BY` (`scope` / `status` / `starred-scope`, default `scope`)
+  - `LAUNCHPAD_QUICKLAUNCH_ACTION_POLL_MS` (default `2500`, auto-apply queued actions interval)
   - `LAUNCHPAD_QUICKLAUNCH_HELPER` (optional helper executable receiving `--sync-json`)
   - when helper is not set and QuickLaunch is enabled, LaunchPad writes sync snapshot to:
     `~/.config/launchpad/quicklaunch-items.json`
@@ -127,7 +128,7 @@ cargo run --bin quicklaunch_helper -- --enqueue-starred-action disable
 cargo run --bin quicklaunch_helper -- --drain-actions
 ```
 
-When QuickLaunch sync is enabled, LaunchPad drains queued actions on refresh and executes them through the same action service used by the main UI.
+When QuickLaunch sync is enabled, LaunchPad auto-drains queued actions on a timer and executes them through the same action service used by the main UI (manual refresh can still force immediate apply).
 
 For macOS native menu-bar control, the repository also includes:
 
@@ -135,7 +136,7 @@ For macOS native menu-bar control, the repository also includes:
 cargo run --bin quicklaunch_menubar
 ```
 
-`quicklaunch_menubar` reads summary from `quicklaunch_helper` and can enqueue starred/group batch actions from the menu bar; LaunchPad applies them on refresh through the shared action service.
+`quicklaunch_menubar` reads summary from `quicklaunch_helper` and can enqueue starred/group batch actions from the menu bar; LaunchPad applies them through shared action service auto-polling.
 Menu title shows a live status badge (`running/loaded/disabled` counts) based on helper snapshots.
 
 ### Run

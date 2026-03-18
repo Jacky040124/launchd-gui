@@ -134,7 +134,7 @@ Slint provides a minimal desktop UI:
   - native tray/menu-bar shell for QuickLaunch controls
   - derives runtime badge (`running/loaded/disabled`) from helper list snapshot
   - reads summary via helper bridge and enqueues starred/group actions
-  - actions are applied by LaunchPad refresh through shared service pipeline
+  - actions are applied by LaunchPad auto-poll loop through shared service pipeline
 
 ## Safety Boundaries
 

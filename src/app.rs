@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
 
 use launchpad::adapter::clipboard::{ClipboardClient, SystemClipboardClient};
 use launchpad::adapter::fs_ops::SystemFsOps;
@@ -33,7 +34,7 @@ use launchpad::service::quicklaunch_service::{
     QuickLaunchConfig, QuickLaunchGroupBy, QuickLaunchService,
 };
 use launchpad::service::star_service::StarService;
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, ModelRc, SharedString, Timer, TimerMode, VecModel};
 use tracing_subscriber::EnvFilter;
 
 use crate::ui_state::UiState;
@@ -138,6 +139,7 @@ struct AppController {
     log_service: LogService,
     ai_service: AiService,
     quicklaunch_service: QuickLaunchService,
+    quicklaunch_action_poll_ms: u64,
     plist_service: PlistService,
     star_service: StarService,
     clipboard: Arc<dyn ClipboardClient>,
@@ -202,6 +204,7 @@ impl AppController {
                     group_by: QuickLaunchGroupBy::from_env_value(&config.quicklaunch_group_by),
                 },
             ),
+            quicklaunch_action_poll_ms: config.quicklaunch_action_poll_ms,
             plist_service: PlistService::new(Arc::new(SystemPlistDocumentStore)),
             star_service,
             clipboard,
@@ -542,6 +545,18 @@ impl AppController {
             " QuickLaunch actions: {} success, {} failed, {} skipped.",
             success, failed, skipped
         )
+    }
+
+    fn poll_quicklaunch_actions(&mut self, ui: &MainWindow) {
+        if self.jobs.is_empty() {
+            return;
+        }
+        let note = self.process_quicklaunch_actions();
+        if note.trim().is_empty() {
+            return;
+        }
+        self.refresh(ui);
+        ui.set_status_message(format!("Auto-applied queued QuickLaunch actions.{note}").into());
     }
 
     fn execute_quicklaunch_action(
@@ -2391,6 +2406,26 @@ pub fn run() -> Result<(), slint::PlatformError> {
     ui.set_command_query("".into());
     ui.set_log_view_text("Select a job to inspect logs.".into());
     controller.borrow_mut().refresh(&ui);
+    let quicklaunch_action_timer = Timer::default();
+    let poll_ms = controller.borrow().quicklaunch_action_poll_ms;
+    if poll_ms > 0 {
+        let ui_weak = ui.as_weak();
+        let controller_for_timer = controller.clone();
+        quicklaunch_action_timer.start(
+            TimerMode::Repeated,
+            Duration::from_millis(poll_ms),
+            move || {
+                if let Some(ui) = ui_weak.upgrade() {
+                    if ui.get_busy() {
+                        return;
+                    }
+                    controller_for_timer
+                        .borrow_mut()
+                        .poll_quicklaunch_actions(&ui);
+                }
+            },
+        );
+    }
     ui.run()
 }
 

@@ -7,6 +7,7 @@ pub struct AppConfig {
     pub quicklaunch_starred_only: bool,
     pub quicklaunch_max_items: usize,
     pub quicklaunch_group_by: String,
+    pub quicklaunch_action_poll_ms: u64,
 }
 
 impl AppConfig {
@@ -23,6 +24,11 @@ impl AppConfig {
                 .unwrap_or(12),
             quicklaunch_group_by: env::var("LAUNCHPAD_QUICKLAUNCH_GROUP_BY")
                 .unwrap_or_else(|_| "scope".to_string()),
+            quicklaunch_action_poll_ms: env::var("LAUNCHPAD_QUICKLAUNCH_ACTION_POLL_MS")
+                .ok()
+                .and_then(|value| value.parse::<u64>().ok())
+                .filter(|value| *value > 0)
+                .unwrap_or(2500),
         }
     }
 }

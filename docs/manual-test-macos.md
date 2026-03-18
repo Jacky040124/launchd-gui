@@ -250,6 +250,7 @@ Expected:
    ```bash
    export LAUNCHPAD_QUICKLAUNCH_ENABLE=true
    export LAUNCHPAD_QUICKLAUNCH_HELPER=/path/to/quicklaunch_helper
+   export LAUNCHPAD_QUICKLAUNCH_ACTION_POLL_MS=1500
    ```
 3. Run LaunchPad and click **Refresh**.
 4. In another terminal run:
@@ -257,19 +258,19 @@ Expected:
    /path/to/quicklaunch_helper --list
    /path/to/quicklaunch_helper --summary
    ```
-5. Queue one action and trigger app refresh:
+5. Queue one action and wait for auto-apply window:
    ```bash
    /path/to/quicklaunch_helper --enqueue-action start <job-id-from-list>
    /path/to/quicklaunch_helper --enqueue-group-action user-agent stop
    /path/to/quicklaunch_helper --enqueue-starred-action disable
    /path/to/quicklaunch_helper --drain-actions
    ```
-   > `--drain-actions` should now show queued JSON; run LaunchPad **Refresh** once, then run again and it should return `[]`.
+   > `--drain-actions` should now show queued JSON; wait ~poll interval, then run again and it should return `[]`.
 
 Expected:
 - Bridge helper receives synced JSON payload.
 - `--list` and `--summary` return non-empty output when jobs are available.
-- Queued helper actions are drained and executed by LaunchPad on refresh.
+- Queued helper actions are drained and executed by LaunchPad auto-poll pipeline.
 
 ## P. Native QuickLaunch Menu Bar (macOS)
 
@@ -286,7 +287,7 @@ Expected:
    - click **Refresh Summary** and verify summary text updates
    - verify menu status line shows badge like `🟢 R1 L3 D0`
    - click **Starred > Start/Restart Starred** (or any group action)
-5. Back in LaunchPad main window click **Refresh** to apply queued actions.
+5. Wait ~1-3 poll cycles (or click **Refresh** for immediate apply).
 6. (Optional) inspect helper queue:
    ```bash
    /path/to/quicklaunch_helper --drain-actions
@@ -294,5 +295,5 @@ Expected:
 
 Expected:
 - Menu bar helper can queue batch actions without opening LaunchPad window controls.
-- LaunchPad refresh drains and executes queued actions via shared service layer.
+- LaunchPad auto-poll (or manual refresh) drains and executes queued actions via shared service layer.
 - Summary refresh reflects current helper snapshot state and updates running/loaded/disabled badge.
