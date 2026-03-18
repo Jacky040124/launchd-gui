@@ -11,6 +11,8 @@ pub struct QuickLaunchItem {
     pub id: String,
     pub title: String,
     pub status: String,
+    pub group: String,
+    pub is_starred: bool,
 }
 
 pub trait QuickLaunchProvider: Send + Sync {
@@ -122,11 +124,14 @@ mod tests {
                 id: "job-1".to_string(),
                 title: "Demo".to_string(),
                 status: "loaded".to_string(),
+                group: "user-agent".to_string(),
+                is_starred: true,
             }])
             .expect("sync to file");
 
         let saved = std::fs::read_to_string(path).expect("read");
         assert!(saved.contains("job-1"));
         assert!(saved.contains("loaded"));
+        assert!(saved.contains("user-agent"));
     }
 }

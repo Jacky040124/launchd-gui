@@ -106,6 +106,12 @@ Slint provides a minimal desktop UI:
 
 `main.rs` wires UI callbacks into service calls and refresh logic.
 
+## Helper Binaries
+
+- `src/bin/quicklaunch_helper.rs`
+  - bridge helper that accepts `--sync-json` payloads
+  - supports `--list` and `--summary` for external menu integrations
+
 ## Safety Boundaries
 
 - System daemons are treated as read-only by default.

@@ -232,3 +232,25 @@ Expected:
 Expected:
 - When helper is not configured, LaunchPad writes JSON snapshot for external menu helper.
 - Snapshot count respects starred-only and max-items config.
+
+## O. QuickLaunch Helper Bridge CLI
+
+1. Build helper:
+   ```bash
+   cargo build --bin quicklaunch_helper
+   ```
+2. Set:
+   ```bash
+   export LAUNCHPAD_QUICKLAUNCH_ENABLE=true
+   export LAUNCHPAD_QUICKLAUNCH_HELPER=/path/to/quicklaunch_helper
+   ```
+3. Run LaunchPad and click **Refresh**.
+4. In another terminal run:
+   ```bash
+   /path/to/quicklaunch_helper --list
+   /path/to/quicklaunch_helper --summary
+   ```
+
+Expected:
+- Bridge helper receives synced JSON payload.
+- `--list` and `--summary` return non-empty output when jobs are available.

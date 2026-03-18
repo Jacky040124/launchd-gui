@@ -99,6 +99,16 @@ tests/
   - when helper is not set and QuickLaunch is enabled, LaunchPad writes sync snapshot to:
     `~/.config/launchpad/quicklaunch-items.json`
 
+### QuickLaunch Helper CLI
+
+The repository now includes `quicklaunch_helper` binary for bridge mode:
+
+```bash
+cargo run --bin quicklaunch_helper -- --sync-json   # reads JSON from stdin
+cargo run --bin quicklaunch_helper -- --list
+cargo run --bin quicklaunch_helper -- --summary
+```
+
 ### Run
 
 ```bash

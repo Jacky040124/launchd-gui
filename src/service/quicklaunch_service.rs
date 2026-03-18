@@ -44,6 +44,8 @@ impl QuickLaunchService {
                 id: job.id.clone(),
                 title: format!("[{}] {}", job.scope, job.label),
                 status: job.status_text().to_string(),
+                group: format!("{}", job.scope),
+                is_starred: job.is_starred,
             })
             .collect::<Vec<_>>();
 
@@ -99,6 +101,8 @@ mod tests {
         let synced_items = provider.synced.lock().expect("lock").clone();
         assert_eq!(synced_items.len(), 1);
         assert!(synced_items[0].title.contains("a"));
+        assert_eq!(synced_items[0].group, "user-agent");
+        assert!(synced_items[0].is_starred);
     }
 
     fn job_fixture(label: &str, is_starred: bool) -> JobSummary {
