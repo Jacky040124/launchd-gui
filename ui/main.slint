@@ -1,4 +1,5 @@
 import { Button, HorizontalBox, LineEdit, ListView, VerticalBox } from "std-widgets.slint";
+import { RaycastTheme } from "theme/raycast_tokens.slint";
 
 export component MainWindow inherits Window {
     in-out property <[string]> job_lines: [];
@@ -97,7 +98,7 @@ export component MainWindow inherits Window {
     title: "LaunchPad";
     width: 1120px;
     height: 920px;
-    background: #f5f7fb;
+    background: RaycastTheme.background;
 
     VerticalBox {
         spacing: 12px;
@@ -126,7 +127,7 @@ export component MainWindow inherits Window {
                 text: root.busy ? "LaunchPad · refreshing jobs..." : "LaunchPad · launchd control center";
                 vertical-alignment: center;
                 font-size: 15px;
-                color: #182230;
+                color: RaycastTheme.text-primary;
             }
         }
 
@@ -167,7 +168,7 @@ export component MainWindow inherits Window {
             Text {
                 text: "Filter: " + root.active_filter_text;
                 vertical-alignment: center;
-                color: #475467;
+                color: RaycastTheme.text-secondary;
             }
         }
 
@@ -225,9 +226,9 @@ export component MainWindow inherits Window {
 
             Rectangle {
                 border-width: 1px;
-                border-color: #d0d5dd;
+                border-color: RaycastTheme.border;
                 border-radius: 10px;
-                background: #ffffff;
+                background: RaycastTheme.surface;
                 horizontal-stretch: 0.9;
                 clip: true;
 
@@ -238,7 +239,7 @@ export component MainWindow inherits Window {
                     Text {
                         text: "Jobs";
                         font-weight: 700;
-                        color: #182230;
+                        color: RaycastTheme.text-primary;
                     }
 
                     Rectangle {
@@ -276,9 +277,9 @@ export component MainWindow inherits Window {
 
             Rectangle {
                 border-width: 1px;
-                border-color: #d0d5dd;
+                border-color: RaycastTheme.border;
                 border-radius: 10px;
-                background: #ffffff;
+                background: RaycastTheme.surface;
                 horizontal-stretch: 1.1;
 
                 VerticalBox {
@@ -287,7 +288,7 @@ export component MainWindow inherits Window {
                     Text {
                         text: "Selected Job";
                         font-weight: 700;
-                        color: #182230;
+                        color: RaycastTheme.text-primary;
                     }
 
                     Rectangle {
@@ -509,13 +510,13 @@ export component MainWindow inherits Window {
                     border-width: 1px;
                     border-color: #eaecf0;
                     border-radius: 8px;
-                    background: #fcfcfd;
+                    background: RaycastTheme.surface-muted;
                     VerticalBox {
                         padding: 8px;
                         Text {
                             text: root.editor_xml_preview;
                             wrap: word-wrap;
-                            color: #344054;
+                            color: RaycastTheme.text-secondary;
                         }
                     }
                 }
@@ -524,18 +525,18 @@ export component MainWindow inherits Window {
                     border-width: 1px;
                     border-color: #fec84b;
                     border-radius: 8px;
-                    background: #fffaeb;
+                    background: RaycastTheme.warning-bg;
                     VerticalBox {
                         padding: 8px;
                         Text {
                             text: "Diagnostics";
-                            color: #7a2e0e;
+                            color: RaycastTheme.warning-text;
                             font-weight: 600;
                         }
                         Text {
                             text: root.editor_diagnostics_text;
                             wrap: word-wrap;
-                            color: #7a2e0e;
+                            color: RaycastTheme.warning-text;
                         }
                     }
                 }
@@ -712,13 +713,13 @@ export component MainWindow inherits Window {
             border-width: 1px;
             border-color: #ececec;
             border-radius: 8px;
-            background: #ffffff;
+            background: RaycastTheme.surface;
             VerticalBox {
                 padding: 8px;
                 Text {
                     text: root.busy ? "Working..." : root.status_message;
                     wrap: word-wrap;
-                    color: root.busy ? #175cd3 : #344054;
+                    color: root.busy ? RaycastTheme.accent : RaycastTheme.text-secondary;
                 }
             }
         }
