@@ -81,6 +81,8 @@ Adapters are trait-based, so tests can inject mock behavior.
   - recent-log query orchestration for selected jobs
 - `ai_service.rs`
   - AI suggestion orchestration (sidecar-first with local heuristic fallback)
+- `quicklaunch_service.rs`
+  - prepares and syncs QuickLaunch item set (supports starred-only + max-count policy)
 
 ## UI Layer (`ui/main.slint` + `src/main.rs`)
 

@@ -87,6 +87,10 @@ tests/
 - Optional AI environment variables:
   - `LAUNCHPAD_AI_PROVIDER` (default AI provider)
   - `LAUNCHPAD_CLAUDE_SIDECAR` (Claude sidecar executable path)
+- Optional QuickLaunch environment variables:
+  - `LAUNCHPAD_QUICKLAUNCH_ENABLE` (`true/false`, default false)
+  - `LAUNCHPAD_QUICKLAUNCH_STARRED_ONLY` (`true/false`, default true)
+  - `LAUNCHPAD_QUICKLAUNCH_MAX_ITEMS` (default 12)
 
 ### Run
 

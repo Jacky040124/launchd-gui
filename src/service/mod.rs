@@ -5,4 +5,5 @@ pub mod diagnostic_service;
 pub mod job_service;
 pub mod log_service;
 pub mod plist_service;
+pub mod quicklaunch_service;
 pub mod star_service;

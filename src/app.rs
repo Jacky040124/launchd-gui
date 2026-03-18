@@ -10,6 +10,7 @@ use launchpad::adapter::launchctl::{current_uid, SystemLaunchctlClient};
 use launchpad::adapter::log_stream::SystemLogStreamClient;
 use launchpad::adapter::plist_doc::SystemPlistDocumentStore;
 use launchpad::adapter::plist_reader::SystemPlistReader;
+use launchpad::adapter::quicklaunch::NoopQuickLaunchProvider;
 use launchpad::adapter::star_store::JsonStarStore;
 use launchpad::config::AppConfig;
 use launchpad::domain::action::TriggerAction;
@@ -25,6 +26,7 @@ use launchpad::service::diagnostic_service::DiagnosticService;
 use launchpad::service::job_service::JobService;
 use launchpad::service::log_service::LogService;
 use launchpad::service::plist_service::PlistService;
+use launchpad::service::quicklaunch_service::{QuickLaunchConfig, QuickLaunchService};
 use launchpad::service::star_service::StarService;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use tracing_subscriber::EnvFilter;
@@ -122,6 +124,7 @@ struct AppController {
     diagnostic_service: DiagnosticService,
     log_service: LogService,
     ai_service: AiService,
+    quicklaunch_service: QuickLaunchService,
     plist_service: PlistService,
     star_service: StarService,
     clipboard: Arc<dyn ClipboardClient>,
@@ -167,6 +170,14 @@ impl AppController {
             diagnostic_service: DiagnosticService,
             log_service: LogService::new(Arc::new(SystemLogStreamClient)),
             ai_service: AiService::new_with_default(&config.ai_default_provider),
+            quicklaunch_service: QuickLaunchService::new(
+                Arc::new(NoopQuickLaunchProvider),
+                QuickLaunchConfig {
+                    enabled: config.quicklaunch_enabled,
+                    starred_only: config.quicklaunch_starred_only,
+                    max_items: config.quicklaunch_max_items,
+                },
+            ),
             plist_service: PlistService::new(Arc::new(SystemPlistDocumentStore)),
             star_service,
             clipboard,
@@ -230,21 +241,28 @@ impl AppController {
                 }
 
                 self.apply_filters_and_render(ui, selected_id_before_refresh.as_deref());
+                let quicklaunch_note = match self.quicklaunch_service.sync_jobs(&self.jobs) {
+                    Ok(0) => String::new(),
+                    Ok(count) => format!(" QuickLaunch synced {count} items."),
+                    Err(err) => format!(" QuickLaunch sync skipped: {err}."),
+                };
                 let visible_count = self.visible_indices.len();
                 if visible_count == 0 {
                     ui.set_status_message(
                         format!(
-                            "Loaded {} jobs. No jobs match current filters.",
-                            self.jobs.len()
+                            "Loaded {} jobs. No jobs match current filters.{}",
+                            self.jobs.len(),
+                            quicklaunch_note
                         )
                         .into(),
                     );
                 } else {
                     ui.set_status_message(
                         format!(
-                            "Loaded {} jobs ({} visible).",
+                            "Loaded {} jobs ({} visible).{}",
                             self.jobs.len(),
-                            visible_count
+                            visible_count,
+                            quicklaunch_note
                         )
                         .into(),
                     );
