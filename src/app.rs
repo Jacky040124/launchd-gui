@@ -91,6 +91,8 @@ struct EditorState {
     ai_prompt: String,
     ai_response: String,
     ai_diff_preview: String,
+    log_window_minutes: String,
+    log_max_lines: String,
 }
 
 impl EditorState {
@@ -113,6 +115,8 @@ impl EditorState {
             ai_prompt: String::new(),
             ai_response: String::new(),
             ai_diff_preview: String::new(),
+            log_window_minutes: "10".to_string(),
+            log_max_lines: "120".to_string(),
         }
     }
 }
@@ -610,6 +614,16 @@ impl AppController {
         self.refresh_editor_preview(ui);
     }
 
+    fn log_window_minutes_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.log_window_minutes = value.trim().to_string();
+        ui.set_log_window_minutes(self.editor_state.log_window_minutes.clone().into());
+    }
+
+    fn log_max_lines_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.log_max_lines = value.trim().to_string();
+        ui.set_log_max_lines(self.editor_state.log_max_lines.clone().into());
+    }
+
     fn key_panel_query_changed(&mut self, ui: &MainWindow, query: &str) {
         self.key_panel_query = query.to_string();
         self.visible_key_defs = search_key_defs(query);
@@ -971,7 +985,23 @@ impl AppController {
         }
 
         let label = self.jobs[index].label.clone();
-        match self.log_service.recent_logs(&label, 10, 120) {
+        let minutes = self
+            .editor_state
+            .log_window_minutes
+            .trim()
+            .parse::<u32>()
+            .ok()
+            .filter(|value| *value > 0)
+            .unwrap_or(10);
+        let max_lines = self
+            .editor_state
+            .log_max_lines
+            .trim()
+            .parse::<usize>()
+            .ok()
+            .filter(|value| *value > 0)
+            .unwrap_or(120);
+        match self.log_service.recent_logs(&label, minutes, max_lines) {
             Ok(logs) => {
                 self.recent_logs_text = if logs.trim().is_empty() {
                     "No recent logs found.".to_string()
@@ -979,7 +1009,13 @@ impl AppController {
                     logs
                 };
                 ui.set_log_view_text(self.recent_logs_text.clone().into());
-                ui.set_status_message("Loaded recent logs.".into());
+                ui.set_status_message(
+                    format!(
+                        "Loaded recent logs (window={}m, max_lines={}).",
+                        minutes, max_lines
+                    )
+                    .into(),
+                );
             }
             Err(err) => {
                 self.recent_logs_text = format!("Failed to load logs: {err}");
@@ -1100,6 +1136,8 @@ impl AppController {
         ui.set_ai_prompt(self.editor_state.ai_prompt.clone().into());
         ui.set_ai_response(self.editor_state.ai_response.clone().into());
         ui.set_ai_diff_preview(self.editor_state.ai_diff_preview.clone().into());
+        ui.set_log_window_minutes(self.editor_state.log_window_minutes.clone().into());
+        ui.set_log_max_lines(self.editor_state.log_max_lines.clone().into());
         ui.set_ai_patch_ready(self.pending_ai_patch_document.is_some());
         ui.set_ai_provider_text(
             format!("AI Provider: {}", self.ai_service.active_provider_name()).into(),
@@ -1760,6 +1798,30 @@ pub fn run() -> Result<(), slint::PlatformError> {
                 controller
                     .borrow_mut()
                     .editor_expert_entries_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_log_window_minutes_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .log_window_minutes_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_log_max_lines_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .log_max_lines_changed(&ui, value.as_str());
             }
         });
     }

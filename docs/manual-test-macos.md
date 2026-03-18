@@ -176,6 +176,7 @@ Expected:
 
 1. Select a job with known recent output.
 2. In editor area, click **Refresh Logs**.
+   - Optionally set **Window (min)** and **Max lines** before refresh.
 3. Verify logs appear in the **Logs** panel.
 4. Switch to another job and click **Refresh Logs** again.
 
@@ -183,6 +184,7 @@ Expected:
 - Logs update to the selected job context.
 - Empty results show a friendly message instead of crashing.
 - On unsupported environments, an explicit error is shown in status/log panel.
+- Custom window/max-lines settings are respected.
 
 ## L. Command Palette
 
