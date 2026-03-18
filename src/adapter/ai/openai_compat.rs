@@ -4,7 +4,7 @@ use reqwest::blocking::Client;
 use serde_json::{json, Value};
 
 use crate::adapter::ai::provider::{
-    summarize_and_extract_notes, AiEditRequest, AiEditResponse, AiProvider,
+    summarize_and_extract_notes, AiEditRequest, AiEditResponse, AiProvider, AiStreamResponse,
 };
 use crate::error::{AppError, AppResult};
 
@@ -91,6 +91,53 @@ impl AiProvider for OpenAiCompatibleProvider {
             suggested_patch_notes,
         })
     }
+
+    fn suggest_edit_with_stream(&self, request: &AiEditRequest) -> AppResult<AiStreamResponse> {
+        let prompt = format!(
+            "You are a launchd plist assistant. Return concise actionable bullets only.\n\
+            User request:\n{}\n\nCurrent plist XML:\n{}",
+            request.user_prompt, request.xml_snapshot
+        );
+        let payload = json!({
+            "model": self.model,
+            "temperature": 0.1,
+            "stream": true,
+            "messages": [
+                {"role":"system","content":"You help users modify launchd plist safely."},
+                {"role":"user","content":prompt}
+            ]
+        });
+
+        let client = Client::new();
+        let mut request_builder = client.post(&self.endpoint).json(&payload);
+        if let Some(api_key) = &self.api_key {
+            request_builder = request_builder.bearer_auth(api_key);
+        }
+
+        let response = request_builder.send()?;
+        let status = response.status();
+        let body = response.text()?;
+        if !status.is_success() {
+            // Some openai-compatible providers don't support SSE stream responses.
+            let fallback = self.suggest_edit(request)?;
+            return Ok(AiStreamResponse::from_response(fallback));
+        }
+
+        let chunks = extract_openai_stream_chunks(&body);
+        if chunks.is_empty() {
+            let fallback = self.suggest_edit(request)?;
+            return Ok(AiStreamResponse::from_response(fallback));
+        }
+
+        let content = chunks.join("");
+        let (summary, suggested_patch_notes) = summarize_and_extract_notes(&content);
+        let response = AiEditResponse {
+            provider: self.provider_name.to_string(),
+            summary,
+            suggested_patch_notes,
+        };
+        Ok(AiStreamResponse { response, chunks })
+    }
 }
 
 fn extract_openai_content(body: &Value) -> Option<String> {
@@ -101,6 +148,23 @@ fn extract_openai_content(body: &Value) -> Option<String> {
         .and_then(|message| message.get("content"))
         .and_then(|content| content.as_str())
         .map(ToOwned::to_owned)
+}
+
+fn extract_openai_stream_chunks(raw: &str) -> Vec<String> {
+    raw.lines()
+        .filter_map(|line| line.trim().strip_prefix("data: "))
+        .filter(|payload| *payload != "[DONE]" && !payload.trim().is_empty())
+        .filter_map(|payload| serde_json::from_str::<Value>(payload).ok())
+        .filter_map(|json| {
+            json.get("choices")
+                .and_then(|value| value.as_array())
+                .and_then(|items| items.first())
+                .and_then(|item| item.get("delta"))
+                .and_then(|delta| delta.get("content"))
+                .and_then(|content| content.as_str())
+                .map(ToOwned::to_owned)
+        })
+        .collect()
 }
 
 fn default_endpoint(provider_name: &str) -> String {
@@ -130,4 +194,32 @@ fn truncate_for_error(body: &str) -> String {
         text.push_str("...");
     }
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::extract_openai_stream_chunks;
+
+    #[test]
+    fn extract_openai_stream_chunks_collects_delta_content() {
+        let payload = r#"
+data: {"choices":[{"delta":{"content":"Hello"}}]}
+data: {"choices":[{"delta":{"content":" world"}}]}
+data: [DONE]
+"#;
+        let chunks = extract_openai_stream_chunks(payload);
+        assert_eq!(chunks, vec!["Hello".to_string(), " world".to_string()]);
+    }
+
+    #[test]
+    fn extract_openai_stream_chunks_ignores_invalid_lines() {
+        let payload = r#"
+event: ping
+data: {"choices":[{"delta":{"role":"assistant"}}]}
+data: invalid-json
+data: [DONE]
+"#;
+        let chunks = extract_openai_stream_chunks(payload);
+        assert!(chunks.is_empty());
+    }
 }

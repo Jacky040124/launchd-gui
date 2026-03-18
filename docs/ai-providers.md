@@ -20,6 +20,7 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
    - 已接入基础 HTTP 调用（`openai_compat.rs` / `anthropic.rs` / `google.rs`）
    - 当缺少 API Key 或 endpoint/model 配置不正确时，会返回明确错误提示
    - OpenAI-compatible 预置名称：`openai` / `openrouter` / `lm-studio` / `ollama` / `xai`
+   - OpenAI-compatible 额外支持 SSE 文本流切片解析（`suggest_edit_with_stream`）
 
 3. **本地启发式 fallback**
    - `AiService` 默认 fallback 到 `heuristic-local` provider
