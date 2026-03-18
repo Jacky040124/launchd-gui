@@ -1,0 +1,113 @@
+import { Button, HorizontalBox, LineEdit, ScrollView, VerticalBox } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    in-out property <[string]> job_lines: [];
+    in-out property <string> status_message: "";
+    in-out property <string> detail_label: "";
+    in-out property <string> detail_scope: "";
+    in-out property <string> detail_status: "";
+    in-out property <string> detail_path: "";
+    in-out property <string> detail_error: "";
+    in-out property <bool> can_trigger: false;
+    in-out property <bool> can_delete: false;
+
+    callback refresh_requested();
+    callback select_job(int);
+    callback trigger_requested(string);
+    callback delete_requested();
+
+    title: "LaunchPad";
+    width: 980px;
+    height: 640px;
+
+    VerticalBox {
+        spacing: 10px;
+        padding: 12px;
+
+        HorizontalBox {
+            spacing: 8px;
+            Button {
+                text: "Refresh";
+                clicked => { root.refresh_requested(); }
+            }
+            Text {
+                text: "LaunchPad · minimalist launchd hub";
+                vertical-alignment: center;
+            }
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: #d7d7d7;
+            border-radius: 6px;
+            height: 330px;
+            clip: true;
+
+            ScrollView {
+                VerticalBox {
+                    spacing: 6px;
+                    padding: 8px;
+                    for line[index] in root.job_lines : Button {
+                        text: line;
+                        horizontal-stretch: 1;
+                        clicked => { root.select_job(index); }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: #d7d7d7;
+            border-radius: 6px;
+
+            VerticalBox {
+                padding: 8px;
+                spacing: 4px;
+                Text { text: "Selected Job"; font-weight: 600; }
+                Text { text: "Label: " + root.detail_label; }
+                Text { text: "Scope: " + root.detail_scope; }
+                Text { text: "Status: " + root.detail_status; }
+                Text { text: "Path: " + root.detail_path; }
+                Text { text: root.detail_error; color: #b42318; }
+            }
+        }
+
+        HorizontalBox {
+            spacing: 8px;
+            Button {
+                text: "Start";
+                enabled: root.can_trigger;
+                clicked => { root.trigger_requested("start"); }
+            }
+            Button {
+                text: "Stop";
+                enabled: root.can_trigger;
+                clicked => { root.trigger_requested("stop"); }
+            }
+            Button {
+                text: "Kickstart";
+                enabled: root.can_trigger;
+                clicked => { root.trigger_requested("kickstart"); }
+            }
+            Button {
+                text: "Delete";
+                enabled: root.can_delete;
+                clicked => { root.delete_requested(); }
+            }
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: #ececec;
+            border-radius: 6px;
+            VerticalBox {
+                padding: 8px;
+                Text {
+                    text: root.status_message;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+}
