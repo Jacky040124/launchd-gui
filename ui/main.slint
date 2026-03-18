@@ -31,6 +31,16 @@ export component MainWindow inherits Window {
     in-out property <int> selected_job_row: -1;
     in-out property <bool> can_trigger: false;
     in-out property <bool> can_delete: false;
+    in-out property <string> editor_target_text: "";
+    in-out property <string> editor_label: "";
+    in-out property <string> editor_program: "";
+    in-out property <string> editor_program_arguments: "";
+    in-out property <string> editor_working_directory: "";
+    in-out property <string> editor_start_interval: "";
+    in-out property <string> editor_env_vars: "";
+    in-out property <bool> editor_run_at_load: false;
+    in-out property <bool> editor_keep_alive: false;
+    in-out property <string> editor_xml_preview: "";
 
     callback refresh_requested();
     callback select_job(int);
@@ -50,10 +60,20 @@ export component MainWindow inherits Window {
     callback copy_detail_requested();
     callback toggle_advanced_requested();
     callback star_filter_toggled(bool);
+    callback editor_label_changed(string);
+    callback editor_program_changed(string);
+    callback editor_args_changed(string);
+    callback editor_working_dir_changed(string);
+    callback editor_start_interval_changed(string);
+    callback editor_env_changed(string);
+    callback toggle_editor_run_at_load();
+    callback toggle_editor_keep_alive();
+    callback save_editor_requested();
+    callback new_job_requested(string);
 
     title: "LaunchPad";
     width: 1120px;
-    height: 700px;
+    height: 920px;
     background: #f5f7fb;
 
     VerticalBox {
@@ -337,6 +357,122 @@ export component MainWindow inherits Window {
                 text: "Delete";
                 enabled: root.can_delete && !root.busy;
                 clicked => { root.delete_requested(); }
+            }
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: #d0d5dd;
+            border-radius: 10px;
+            background: #ffffff;
+            clip: true;
+
+            VerticalBox {
+                padding: 10px;
+                spacing: 8px;
+
+                HorizontalBox {
+                    spacing: 8px;
+                    Text {
+                        text: "Plist Editor (Standard + XML)";
+                        font-weight: 700;
+                        color: #182230;
+                    }
+                    Text {
+                        text: root.editor_target_text;
+                        color: #475467;
+                    }
+                    Button {
+                        text: "New User Job";
+                        enabled: !root.busy;
+                        clicked => { root.new_job_requested("user-agent"); }
+                    }
+                    Button {
+                        text: "New Global Job";
+                        enabled: !root.busy;
+                        clicked => { root.new_job_requested("global-agent"); }
+                    }
+                }
+
+                HorizontalBox {
+                    spacing: 8px;
+                    LineEdit {
+                        width: 220px;
+                        enabled: !root.busy;
+                        text <=> root.editor_label;
+                        placeholder-text: "Label";
+                        edited(value) => { root.editor_label_changed(value); }
+                    }
+                    LineEdit {
+                        width: 220px;
+                        enabled: !root.busy;
+                        text <=> root.editor_program;
+                        placeholder-text: "Program path";
+                        edited(value) => { root.editor_program_changed(value); }
+                    }
+                    LineEdit {
+                        width: 240px;
+                        enabled: !root.busy;
+                        text <=> root.editor_program_arguments;
+                        placeholder-text: "ProgramArguments (space separated)";
+                        edited(value) => { root.editor_args_changed(value); }
+                    }
+                    LineEdit {
+                        width: 200px;
+                        enabled: !root.busy;
+                        text <=> root.editor_working_directory;
+                        placeholder-text: "WorkingDirectory";
+                        edited(value) => { root.editor_working_dir_changed(value); }
+                    }
+                }
+
+                HorizontalBox {
+                    spacing: 8px;
+                    LineEdit {
+                        width: 220px;
+                        enabled: !root.busy;
+                        text <=> root.editor_start_interval;
+                        placeholder-text: "StartInterval (seconds)";
+                        edited(value) => { root.editor_start_interval_changed(value); }
+                    }
+                    LineEdit {
+                        width: 460px;
+                        enabled: !root.busy;
+                        text <=> root.editor_env_vars;
+                        placeholder-text: "EnvironmentVariables: KEY=VALUE, KEY2=VALUE2";
+                        edited(value) => { root.editor_env_changed(value); }
+                    }
+                    Button {
+                        text: root.editor_run_at_load ? "RunAtLoad:yes" : "RunAtLoad:no";
+                        enabled: !root.busy;
+                        clicked => { root.toggle_editor_run_at_load(); }
+                    }
+                    Button {
+                        text: root.editor_keep_alive ? "KeepAlive:yes" : "KeepAlive:no";
+                        enabled: !root.busy;
+                        clicked => { root.toggle_editor_keep_alive(); }
+                    }
+                    Button {
+                        text: "Save";
+                        enabled: !root.busy;
+                        clicked => { root.save_editor_requested(); }
+                    }
+                }
+
+                Rectangle {
+                    border-width: 1px;
+                    border-color: #eaecf0;
+                    border-radius: 8px;
+                    background: #fcfcfd;
+                    VerticalBox {
+                        padding: 8px;
+                        Text {
+                            text: root.editor_xml_preview;
+                            wrap: word-wrap;
+                            color: #344054;
+                        }
+                    }
+                }
             }
         }
 

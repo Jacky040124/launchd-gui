@@ -37,6 +37,8 @@ Expected:
 2. Click **Start**.
 3. Click **Refresh** and verify status change if applicable.
 4. Repeat for **Stop** and **Kickstart**.
+5. Click **Enable**, then **Disable** and verify status messages update.
+6. Click **Load** and **Unload** and verify status messages update.
 
 Expected:
 - Status message shows command success/failure.
@@ -121,3 +123,39 @@ Expected:
 
 Expected:
 - Previously starred jobs remain starred.
+
+## I. Advanced Attribute Filters
+
+1. Use status filter buttons:
+   - **Running**
+   - **Loaded**
+   - **Disabled**
+   - **Unknown**
+2. Verify list updates according to selected status.
+3. Click tri-state filter toggles repeatedly:
+   - `Disabled:any -> yes -> no -> any`
+   - `RunAtLoad:any -> yes -> no -> any`
+   - `KeepAlive:any -> yes -> no -> any`
+   - `HasError:any -> yes -> no -> any`
+
+Expected:
+- Filters can be combined with search and scope filters.
+- Active filter badge reflects advanced filters.
+
+## J. Plist Editor + New Job
+
+1. Select an existing user agent.
+2. In **Plist Editor (Standard + XML)** update one or more fields:
+   - Label / Program / ProgramArguments / WorkingDirectory
+   - StartInterval
+   - EnvironmentVariables (`KEY=VALUE, KEY2=VALUE2`)
+   - RunAtLoad / KeepAlive toggles
+3. Confirm XML preview updates immediately as fields change.
+4. Click **Save** and verify status message indicates success.
+5. Click **New User Job** (or **New Global Job**), adjust fields, then **Save**.
+6. Click **Refresh** and verify the newly created plist appears in list.
+
+Expected:
+- Editor shows validation errors for invalid values (for example malformed env pairs).
+- Existing plist edits can be saved safely.
+- New plist creation succeeds in allowed directories and is visible after refresh.

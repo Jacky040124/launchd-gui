@@ -13,7 +13,12 @@ LaunchPad is split into three layers to keep launchd logic testable and UI light
 - `status.rs`
   - Normalized status enum and parser from `launchctl print` output
 - `action.rs`
-  - Trigger action enum (`start`, `stop`, `kickstart`)
+  - Trigger action enum (`start`, `stop`, `kickstart`, `enable`, `disable`, `load`, `unload`)
+- `filter.rs`
+  - advanced filter model (status + tri-state attribute filters)
+- `plist_document.rs`
+  - standard plist editor document model
+  - editor mode enum and documented key definitions
 
 This layer contains no process execution and is suitable for deterministic tests.
 
@@ -23,6 +28,10 @@ This layer contains no process execution and is suitable for deterministic tests
   - scans known launchd directories and returns plist candidates
 - `plist_reader.rs`
   - extracts `Label` from plist files
+  - extracts lightweight metadata (`RunAtLoad`, `KeepAlive`, `Disabled`)
+- `plist_doc.rs`
+  - loads/saves standard plist editor model
+  - serializes XML preview
 - `launchctl.rs`
   - wraps `launchctl` command invocations and error normalization
   - parses `launchctl list` bulk status output
@@ -43,12 +52,17 @@ Adapters are trait-based, so tests can inject mock behavior.
   - on-demand runtime detail fetch per selected job
 - `action_service.rs`
   - validates action capability and executes trigger commands
+  - supports start/stop/kickstart/enable/disable/load/unload
 - `delete_service.rs`
   - safe deletion flow:
     1. capability check
     2. `bootout`
     3. delete plist
 - `star_service.rs`
+ - `plist_service.rs`
+   - standard editor load/save orchestration
+   - new plist creation in allowed scope directories
+   - XML preview and input parsing helpers
   - loads persisted stars
   - toggles star/unstar and saves state
   - applies star state to job list models
@@ -60,6 +74,9 @@ Slint provides a minimal desktop UI:
 - virtualized list of jobs (`ListView`)
 - selected job details + expandable advanced diagnostics
 - star/unstar + starred-only filter
+- advanced attribute filters (status/disabled/run-at-load/keep-alive/has-error)
+- embedded plist editor with real-time XML preview
+- new user/global plist creation flow
 - copy details action
 - action buttons
 - status message area

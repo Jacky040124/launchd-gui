@@ -7,16 +7,19 @@ use launchpad::adapter::clipboard::{ClipboardClient, SystemClipboardClient};
 use launchpad::adapter::fs_ops::SystemFsOps;
 use launchpad::adapter::fs_scan::FileScanner;
 use launchpad::adapter::launchctl::{current_uid, SystemLaunchctlClient};
+use launchpad::adapter::plist_doc::SystemPlistDocumentStore;
 use launchpad::adapter::plist_reader::SystemPlistReader;
 use launchpad::adapter::star_store::JsonStarStore;
 use launchpad::domain::action::TriggerAction;
 use launchpad::domain::filter::AdvancedFilter;
 use launchpad::domain::job::{JobScope, JobSummary};
 use launchpad::domain::job_detail::JobRuntimeDetails;
+use launchpad::domain::plist_document::StandardPlistDocument;
 use launchpad::domain::status::JobStatus;
 use launchpad::service::action_service::ActionService;
 use launchpad::service::delete_service::DeleteService;
 use launchpad::service::job_service::JobService;
+use launchpad::service::plist_service::PlistService;
 use launchpad::service::star_service::StarService;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use tracing_subscriber::EnvFilter;
@@ -59,10 +62,49 @@ impl ScopeFilter {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum EditorTarget {
+    Existing { index: usize },
+    New { scope: JobScope },
+}
+
+#[derive(Debug, Clone, Default)]
+struct EditorState {
+    label: String,
+    program: String,
+    program_arguments: String,
+    run_at_load: bool,
+    keep_alive: bool,
+    start_interval: String,
+    working_directory: String,
+    environment_variables: String,
+    xml_preview: String,
+}
+
+impl EditorState {
+    fn from_document(document: &StandardPlistDocument, plist_service: &PlistService) -> Self {
+        Self {
+            label: document.label.clone(),
+            program: document.program.clone(),
+            program_arguments: document.to_program_arguments_line(),
+            run_at_load: document.run_at_load,
+            keep_alive: document.keep_alive,
+            start_interval: document
+                .start_interval
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+            working_directory: document.working_directory.clone().unwrap_or_default(),
+            environment_variables: plist_service.format_env_pairs(&document.environment_variables),
+            xml_preview: String::new(),
+        }
+    }
+}
+
 struct AppController {
     job_service: JobService,
     action_service: ActionService,
     delete_service: DeleteService,
+    plist_service: PlistService,
     star_service: StarService,
     clipboard: Arc<dyn ClipboardClient>,
     jobs: Vec<JobSummary>,
@@ -73,6 +115,8 @@ struct AppController {
     advanced_filter: AdvancedFilter,
     starred_only: bool,
     advanced_details_visible: bool,
+    editor_state: EditorState,
+    editor_target: Option<EditorTarget>,
     ui_state: UiState,
 }
 
@@ -95,6 +139,7 @@ impl AppController {
             ),
             action_service: ActionService::new(launchctl.clone(), uid),
             delete_service: DeleteService::new(launchctl, fs_ops, uid),
+            plist_service: PlistService::new(Arc::new(SystemPlistDocumentStore)),
             star_service,
             clipboard,
             jobs: Vec::new(),
@@ -105,6 +150,8 @@ impl AppController {
             advanced_filter: AdvancedFilter::default(),
             starred_only: false,
             advanced_details_visible: false,
+            editor_state: EditorState::default(),
+            editor_target: None,
             ui_state: UiState::default(),
         }
     }
@@ -130,6 +177,9 @@ impl AppController {
                 if self.jobs.is_empty() {
                     self.ui_state.clear_selection();
                     self.visible_indices.clear();
+                    self.editor_target = None;
+                    self.editor_state = EditorState::default();
+                    self.sync_editor_to_ui(ui);
                     self.update_filter_badge(ui);
                     ui.set_job_lines(ModelRc::new(VecModel::from(Vec::<SharedString>::new())));
                     ui.set_selected_job_row(-1);
@@ -167,6 +217,9 @@ impl AppController {
                 self.jobs.clear();
                 self.visible_indices.clear();
                 self.ui_state.clear_selection();
+                self.editor_target = None;
+                self.editor_state = EditorState::default();
+                self.sync_editor_to_ui(ui);
                 self.update_filter_badge(ui);
                 ui.set_job_lines(ModelRc::new(VecModel::from(Vec::<SharedString>::new())));
                 ui.set_selected_job_row(-1);
@@ -187,8 +240,24 @@ impl AppController {
         ui.set_confirm_delete_visible(false);
         ui.set_confirm_delete_label("".into());
         self.ensure_runtime_details_loaded(ui, job_index);
+        self.load_editor_for_existing_job(ui, job_index);
         self.update_selection_details(ui);
         ui.set_status_message(format!("Selected {}", self.jobs[job_index].label).into());
+    }
+
+    fn start_new_job_editor(&mut self, ui: &MainWindow, scope: JobScope) {
+        let scope_label = scope.as_str().to_string();
+        self.editor_target = Some(EditorTarget::New { scope });
+        self.editor_state = EditorState {
+            label: "com.example.new-job".to_string(),
+            program: "/usr/bin/true".to_string(),
+            run_at_load: true,
+            keep_alive: false,
+            ..EditorState::default()
+        };
+        self.refresh_editor_preview(ui);
+        self.sync_editor_to_ui(ui);
+        ui.set_status_message(format!("Preparing new {scope_label} plist draft.").into());
     }
 
     fn query_changed(&mut self, ui: &MainWindow, query: &str) {
@@ -406,6 +475,92 @@ impl AppController {
         }
     }
 
+    fn editor_label_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.label = value.trim().to_string();
+        self.refresh_editor_preview(ui);
+    }
+
+    fn editor_program_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.program = value.trim().to_string();
+        self.refresh_editor_preview(ui);
+    }
+
+    fn editor_args_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.program_arguments = value.trim().to_string();
+        self.refresh_editor_preview(ui);
+    }
+
+    fn editor_working_dir_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.working_directory = value.trim().to_string();
+        self.refresh_editor_preview(ui);
+    }
+
+    fn editor_start_interval_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.start_interval = value.trim().to_string();
+        self.refresh_editor_preview(ui);
+    }
+
+    fn editor_env_changed(&mut self, ui: &MainWindow, value: &str) {
+        self.editor_state.environment_variables = value.trim().to_string();
+        self.refresh_editor_preview(ui);
+    }
+
+    fn toggle_editor_run_at_load(&mut self, ui: &MainWindow) {
+        self.editor_state.run_at_load = !self.editor_state.run_at_load;
+        ui.set_editor_run_at_load(self.editor_state.run_at_load);
+        self.refresh_editor_preview(ui);
+    }
+
+    fn toggle_editor_keep_alive(&mut self, ui: &MainWindow) {
+        self.editor_state.keep_alive = !self.editor_state.keep_alive;
+        ui.set_editor_keep_alive(self.editor_state.keep_alive);
+        self.refresh_editor_preview(ui);
+    }
+
+    fn save_editor(&mut self, ui: &MainWindow) {
+        let document = match self.editor_document_from_state() {
+            Ok(document) => document,
+            Err(err) => {
+                ui.set_status_message(format!("Editor validation failed: {err}").into());
+                return;
+            }
+        };
+
+        let Some(target) = self.editor_target.clone() else {
+            ui.set_status_message("Select a job or create a new draft first.".into());
+            return;
+        };
+
+        match target {
+            EditorTarget::Existing { index } => {
+                if index >= self.jobs.len() {
+                    ui.set_status_message("Selected job is no longer available.".into());
+                    return;
+                }
+                let job = self.jobs[index].clone();
+                match self
+                    .plist_service
+                    .save_existing(&job.path, &job.scope, &document)
+                {
+                    Ok(_) => {
+                        ui.set_status_message("Saved plist changes.".into());
+                        self.refresh(ui);
+                    }
+                    Err(err) => ui.set_status_message(format!("Save failed: {err}").into()),
+                }
+            }
+            EditorTarget::New { scope } => match self.plist_service.create_new(scope, &document) {
+                Ok(path) => {
+                    ui.set_status_message(
+                        format!("Created new plist at {}", path.display()).into(),
+                    );
+                    self.refresh(ui);
+                }
+                Err(err) => ui.set_status_message(format!("Create failed: {err}").into()),
+            },
+        }
+    }
+
     fn set_starred_only(&mut self, ui: &MainWindow, value: bool) {
         self.starred_only = value;
         ui.set_show_starred_only(value);
@@ -426,6 +581,100 @@ impl AppController {
     fn toggle_advanced_details(&mut self, ui: &MainWindow) {
         self.advanced_details_visible = !self.advanced_details_visible;
         ui.set_advanced_detail_visible(self.advanced_details_visible);
+    }
+
+    fn load_editor_for_existing_job(&mut self, ui: &MainWindow, index: usize) {
+        if index >= self.jobs.len() {
+            return;
+        }
+        let job = self.jobs[index].clone();
+        self.editor_target = Some(EditorTarget::Existing { index });
+        match self.plist_service.load_document(&job.path) {
+            Ok(document) => {
+                self.editor_state = EditorState::from_document(&document, &self.plist_service);
+                self.refresh_editor_preview(ui);
+                self.sync_editor_to_ui(ui);
+            }
+            Err(err) => {
+                self.editor_state = EditorState::default();
+                self.sync_editor_to_ui(ui);
+                ui.set_status_message(format!("Failed to load plist editor: {err}").into());
+            }
+        }
+    }
+
+    fn editor_document_from_state(&self) -> Result<StandardPlistDocument, String> {
+        let start_interval = if self.editor_state.start_interval.trim().is_empty() {
+            None
+        } else {
+            Some(
+                self.editor_state
+                    .start_interval
+                    .trim()
+                    .parse::<u64>()
+                    .map_err(|_| "StartInterval must be a non-negative integer".to_string())?,
+            )
+        };
+
+        let environment_variables = self
+            .plist_service
+            .parse_env_pairs(&self.editor_state.environment_variables)
+            .map_err(|err| err.to_string())?;
+
+        Ok(StandardPlistDocument {
+            label: self.editor_state.label.trim().to_string(),
+            program: self.editor_state.program.trim().to_string(),
+            program_arguments: self
+                .plist_service
+                .parse_program_arguments(&self.editor_state.program_arguments),
+            run_at_load: self.editor_state.run_at_load,
+            keep_alive: self.editor_state.keep_alive,
+            start_interval,
+            working_directory: (!self.editor_state.working_directory.trim().is_empty())
+                .then_some(self.editor_state.working_directory.trim().to_string()),
+            environment_variables,
+        })
+    }
+
+    fn refresh_editor_preview(&mut self, ui: &MainWindow) {
+        match self.editor_document_from_state() {
+            Ok(document) => match self.plist_service.xml_preview(&document) {
+                Ok(xml) => {
+                    self.editor_state.xml_preview = xml;
+                }
+                Err(err) => {
+                    self.editor_state.xml_preview = format!("XML preview unavailable: {err}");
+                }
+            },
+            Err(err) => {
+                self.editor_state.xml_preview = format!("XML preview unavailable: {err}");
+            }
+        }
+        ui.set_editor_xml_preview(self.editor_state.xml_preview.clone().into());
+    }
+
+    fn sync_editor_to_ui(&self, ui: &MainWindow) {
+        ui.set_editor_label(self.editor_state.label.clone().into());
+        ui.set_editor_program(self.editor_state.program.clone().into());
+        ui.set_editor_program_arguments(self.editor_state.program_arguments.clone().into());
+        ui.set_editor_working_directory(self.editor_state.working_directory.clone().into());
+        ui.set_editor_start_interval(self.editor_state.start_interval.clone().into());
+        ui.set_editor_env_vars(self.editor_state.environment_variables.clone().into());
+        ui.set_editor_run_at_load(self.editor_state.run_at_load);
+        ui.set_editor_keep_alive(self.editor_state.keep_alive);
+        ui.set_editor_xml_preview(self.editor_state.xml_preview.clone().into());
+        let target_text = match &self.editor_target {
+            Some(EditorTarget::Existing { index }) => self
+                .jobs
+                .get(*index)
+                .map(|job| format!("Editing existing: {}", job.path.display()))
+                .unwrap_or_else(|| "Editing existing job".to_string()),
+            Some(EditorTarget::New { scope }) => {
+                format!("Creating new {} plist", scope.as_str())
+            }
+            None => "No editor target selected".to_string(),
+        };
+        ui.set_editor_target_text(target_text.into());
     }
 
     fn apply_filters_and_render(&mut self, ui: &MainWindow, preferred_job_id: Option<&str>) {
@@ -455,6 +704,9 @@ impl AppController {
 
         if self.visible_indices.is_empty() {
             self.ui_state.clear_selection();
+            self.editor_target = None;
+            self.editor_state = EditorState::default();
+            self.sync_editor_to_ui(ui);
             ui.set_selected_job_row(-1);
             self.update_selection_details(ui);
             return;
@@ -472,6 +724,7 @@ impl AppController {
             .unwrap_or(self.visible_indices[0]);
         self.ui_state.select(selected);
         self.ensure_runtime_details_loaded(ui, selected);
+        self.load_editor_for_existing_job(ui, selected);
         self.update_selection_details(ui);
     }
 
@@ -625,6 +878,18 @@ impl AppController {
             format!("Status: {}", job.status_text()),
             format!("Path: {}", job.path.to_string_lossy()),
             format!("Starred: {}", if job.is_starred { "yes" } else { "no" }),
+            format!(
+                "RunAtLoad: {}",
+                job.metadata.run_at_load.map(bool_to_badge).unwrap_or("N/A")
+            ),
+            format!(
+                "KeepAlive: {}",
+                job.metadata.keep_alive.map(bool_to_badge).unwrap_or("N/A")
+            ),
+            format!(
+                "Disabled key: {}",
+                job.metadata.disabled.map(bool_to_badge).unwrap_or("N/A")
+            ),
             format!("PID: {}", details.pid.unwrap_or_else(|| "N/A".to_string())),
             format!(
                 "Last Exit Status: {}",
@@ -905,6 +1170,125 @@ pub fn run() -> Result<(), slint::PlatformError> {
     {
         let ui_weak = ui.as_weak();
         let controller = controller.clone();
+        ui.on_editor_label_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .editor_label_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_editor_program_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .editor_program_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_editor_args_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .editor_args_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_editor_working_dir_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .editor_working_dir_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_editor_start_interval_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .editor_start_interval_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_editor_env_changed(move |value| {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller
+                    .borrow_mut()
+                    .editor_env_changed(&ui, value.as_str());
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_toggle_editor_run_at_load(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().toggle_editor_run_at_load(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_toggle_editor_keep_alive(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().toggle_editor_keep_alive(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_save_editor_requested(move || {
+            if let Some(ui) = ui_weak.upgrade() {
+                controller.borrow_mut().save_editor(&ui);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
+        ui.on_new_job_requested(move |scope| {
+            if let Some(ui) = ui_weak.upgrade() {
+                let parsed_scope = match scope.as_str() {
+                    "global-agent" => JobScope::GlobalAgent,
+                    "system-daemon" => JobScope::SystemDaemon,
+                    _ => JobScope::UserAgent,
+                };
+                controller
+                    .borrow_mut()
+                    .start_new_job_editor(&ui, parsed_scope);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
+        let controller = controller.clone();
         ui.on_star_filter_toggled(move |enabled| {
             if let Some(ui) = ui_weak.upgrade() {
                 controller.borrow_mut().set_starred_only(&ui, enabled);
@@ -913,6 +1297,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     }
 
     controller.borrow().update_advanced_filter_controls(&ui);
+    controller.borrow().sync_editor_to_ui(&ui);
     controller.borrow_mut().refresh(&ui);
     ui.run()
 }

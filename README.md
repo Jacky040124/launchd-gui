@@ -2,9 +2,9 @@
 
 A modern, lightweight, minimalist GUI hub for managing `launchd` jobs on macOS.
 
-## Current MVP Scope
+## Current Scope
 
-LaunchPad currently focuses on three core operations:
+LaunchPad currently includes these core capabilities:
 
 1. **Status read** for jobs under:
    - `~/Library/LaunchAgents`
@@ -15,6 +15,10 @@ LaunchPad currently focuses on three core operations:
    - `start`
    - `stop`
    - `kickstart`
+   - `enable`
+   - `disable`
+   - `load` (`bootstrap`)
+   - `unload` (`bootout`)
 3. **Delete flow** with safety guard:
    - two-step confirmation
    - capability checks (scope + file permission)
@@ -28,14 +32,20 @@ LaunchPad currently focuses on three core operations:
    - persistent star store in user config
 6. **Copy selected job details**:
    - multi-line diagnostic format for quick sharing/debugging
-
-The app intentionally does **not** include job creation/editing in this iteration.
+7. **Advanced attribute filters**:
+   - status filter (`running/loaded/disabled/unknown`)
+   - tri-state attribute filters (`Disabled`, `RunAtLoad`, `KeepAlive`, `HasError`)
+8. **Plist editor + creation flow (standard mode)**:
+   - edit common keys: `Label`, `Program`, `ProgramArguments`, `RunAtLoad`, `KeepAlive`,
+     `StartInterval`, `WorkingDirectory`, `EnvironmentVariables`
+   - real-time XML preview while editing
+   - create new user/global plist from the app
 
 ## Tech Stack
 
 - **Rust**
 - **Slint** (native desktop UI, no web runtime)
-- `plist` crate for parsing job labels
+- `plist` crate for plist parsing and XML serialization
 - `launchctl` command adapter for status/actions
 
 ## Project Structure
@@ -97,15 +107,16 @@ LaunchPad uses a layered performance approach:
 
 ## Known Limitations
 
-- No create/edit wizard for plist jobs in current MVP.
+- No full expert editor for arbitrary nested keys yet (standard editor first).
 - UI currently focuses on list/detail/action flow and does not include menu bar integration.
 - `launchctl` output formats can vary across macOS versions; detail parsing is resilient but best-effort.
 
 ## Next Roadmap
 
-- Add optional plist editor for common fields (`Label`, `ProgramArguments`, schedule keys).
+- Add expert plist editor with arbitrary key injection panel (36+ documented keys).
 - Add richer status diagnostics (last exit hints, disabled reason visibility).
 - Add optional log preview panel for selected jobs.
+- Add AI-native workflow for natural-language create/edit with reviewable diffs.
 - Expand macOS-only integration tests for real `launchctl` workflows.
 
 ## License
