@@ -1,0 +1,45 @@
+import { Button, HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+
+export component DeleteConfirmPanel inherits Rectangle {
+    in-out property <bool> busy: false;
+    in-out property <bool> confirm_delete_visible: false;
+    in-out property <string> confirm_delete_label: "";
+    callback confirm_delete();
+    callback cancel_delete();
+
+    visible: root.confirm_delete_visible;
+    border-width: 1px;
+    border-color: RaycastTheme.border-danger;
+    border-radius: 8px;
+    background: RaycastTheme.danger-bg;
+    opacity: root.confirm_delete_visible ? 1 : 0;
+    animate opacity { duration: 140ms; easing: ease-in-out; }
+
+    VerticalBox {
+        padding: 10px;
+        spacing: 6px;
+        Text {
+            text: "Delete '" + root.confirm_delete_label + "' ?";
+            color: RaycastTheme.danger-text;
+            font-weight: 600;
+        }
+        Text {
+            text: "This action is irreversible. The plist file will be removed.";
+            wrap: word-wrap;
+        }
+        HorizontalBox {
+            spacing: 8px;
+            Button {
+                text: "Confirm Delete";
+                enabled: !root.busy;
+                clicked => { root.confirm_delete(); }
+            }
+            Button {
+                text: "Cancel";
+                enabled: !root.busy;
+                clicked => { root.cancel_delete(); }
+            }
+        }
+    }
+}

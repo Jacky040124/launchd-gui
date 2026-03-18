@@ -1,0 +1,21 @@
+import { VerticalBox } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+
+export component StatusFooterPanel inherits Rectangle {
+    in-out property <bool> busy: false;
+    in-out property <string> status_message: "";
+
+    border-width: 1px;
+    border-color: RaycastTheme.border;
+    border-radius: 8px;
+    background: RaycastTheme.surface;
+
+    VerticalBox {
+        padding: 8px;
+        Text {
+            text: root.busy ? "Working..." : root.status_message;
+            wrap: word-wrap;
+            color: root.busy ? RaycastTheme.accent : RaycastTheme.text-secondary;
+        }
+    }
+}

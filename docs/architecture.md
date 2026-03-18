@@ -115,6 +115,8 @@ Slint provides a minimal desktop UI:
 - `editor_ai_panel.slint`
 - `editor_key_panel.slint`
 - `editor_main_panel.slint`
+- `delete_confirm_panel.slint`
+- `status_footer_panel.slint`
 
 `main.rs` wires UI callbacks into service calls and refresh logic.
 

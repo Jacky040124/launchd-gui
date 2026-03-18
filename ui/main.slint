@@ -1,4 +1,4 @@
-import { Button, HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { VerticalBox } from "std-widgets.slint";
 import { RaycastTheme } from "theme/raycast_tokens.slint";
 import { TopCommandBar } from "components/top_command_bar.slint";
 import { SearchScopeBar } from "components/search_scope_bar.slint";
@@ -6,6 +6,8 @@ import { StatusFilterBar } from "components/status_filter_bar.slint";
 import { JobsWorkspace } from "components/jobs_workspace.slint";
 import { ActionBar } from "components/action_bar.slint";
 import { EditorMainPanel } from "components/editor_main_panel.slint";
+import { DeleteConfirmPanel } from "components/delete_confirm_panel.slint";
+import { StatusFooterPanel } from "components/status_footer_panel.slint";
 
 export component MainWindow inherits Window {
     in-out property <[string]> job_lines: [];
@@ -240,56 +242,17 @@ export component MainWindow inherits Window {
             key_panel_add_requested(index) => { root.key_panel_add_requested(index); }
         }
 
-        Rectangle {
-            visible: root.confirm_delete_visible;
-            border-width: 1px;
-            border-color: RaycastTheme.border-danger;
-            border-radius: 8px;
-            background: RaycastTheme.danger-bg;
-            opacity: root.confirm_delete_visible ? 1 : 0;
-            animate opacity { duration: 140ms; easing: ease-in-out; }
-
-            VerticalBox {
-                padding: 10px;
-                spacing: 6px;
-                Text {
-                    text: "Delete '" + root.confirm_delete_label + "' ?";
-                    color: RaycastTheme.danger-text;
-                    font-weight: 600;
-                }
-                Text {
-                    text: "This action is irreversible. The plist file will be removed.";
-                    wrap: word-wrap;
-                }
-                HorizontalBox {
-                    spacing: 8px;
-                    Button {
-                        text: "Confirm Delete";
-                        enabled: !root.busy;
-                        clicked => { root.confirm_delete(); }
-                    }
-                    Button {
-                        text: "Cancel";
-                        enabled: !root.busy;
-                        clicked => { root.cancel_delete(); }
-                    }
-                }
-            }
+        DeleteConfirmPanel {
+            busy: root.busy;
+            confirm_delete_visible: root.confirm_delete_visible;
+            confirm_delete_label: root.confirm_delete_label;
+            confirm_delete => { root.confirm_delete(); }
+            cancel_delete => { root.cancel_delete(); }
         }
 
-        Rectangle {
-            border-width: 1px;
-            border-color: RaycastTheme.border;
-            border-radius: 8px;
-            background: RaycastTheme.surface;
-            VerticalBox {
-                padding: 8px;
-                Text {
-                    text: root.busy ? "Working..." : root.status_message;
-                    wrap: word-wrap;
-                    color: root.busy ? RaycastTheme.accent : RaycastTheme.text-secondary;
-                }
-            }
+        StatusFooterPanel {
+            busy: root.busy;
+            status_message: root.status_message;
         }
     }
 }
