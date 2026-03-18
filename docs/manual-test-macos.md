@@ -215,6 +215,7 @@ Expected:
 1. Select一个可编辑任务。
 2. 在 AI prompt 输入：`enable run at load interval 300 and add logs`.
 3. 点击 **AI Analyze**，确认建议输出 + diff 预览出现。
+   - 同时确认响应里出现 `Stream preview` 分段行。
 4. 点击 **Apply AI Patch**，然后点击 **Confirm Apply**。
 5. 验证编辑器字段已更新（例如 RunAtLoad、StartInterval、Expert keys 中日志路径）。
 6. 点击 **Save** 才真正写入 plist。

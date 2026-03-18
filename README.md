@@ -52,6 +52,7 @@ LaunchPad currently includes these core capabilities:
    - Claude Agent sidecar integration hook
    - local heuristic fallback when remote provider unavailable
    - in-app provider switching (openai/openrouter/lm-studio/ollama/xai/anthropic/google/claude-sidecar)
+   - stream preview chunks in response panel (stream-ready provider interface)
    - patch diff preview + explicit confirm before applying edits to editor
    - provider HTTP calls for OpenAI-compatible, Anthropic, and Google (configurable endpoint/model)
 11. **Command palette (Raycast-style interaction)**:

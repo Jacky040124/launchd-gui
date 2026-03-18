@@ -5,7 +5,7 @@ use crate::adapter::ai::anthropic::AnthropicProvider;
 use crate::adapter::ai::claude_agent_sidecar::ClaudeAgentSidecarProvider;
 use crate::adapter::ai::google::GoogleProvider;
 use crate::adapter::ai::openai_compat::OpenAiCompatibleProvider;
-use crate::adapter::ai::provider::{AiEditRequest, AiEditResponse, AiProvider};
+use crate::adapter::ai::provider::{AiEditRequest, AiEditResponse, AiProvider, AiStreamResponse};
 use crate::error::AppResult;
 
 pub struct AiService {
@@ -108,6 +108,17 @@ impl AiService {
             xml_snapshot: xml_snapshot.to_string(),
         })
     }
+
+    pub fn suggest_edit_with_stream(
+        &self,
+        prompt: &str,
+        xml_snapshot: &str,
+    ) -> AppResult<AiStreamResponse> {
+        self.providers[&self.active_provider].suggest_edit_with_stream(&AiEditRequest {
+            user_prompt: prompt.to_string(),
+            xml_snapshot: xml_snapshot.to_string(),
+        })
+    }
 }
 
 impl Default for AiService {
@@ -161,7 +172,9 @@ impl AiProvider for HeuristicAiProvider {
 mod tests {
     use std::sync::Arc;
 
-    use crate::adapter::ai::provider::{AiEditRequest, AiEditResponse, AiProvider};
+    use crate::adapter::ai::provider::{
+        AiEditRequest, AiEditResponse, AiProvider, AiStreamResponse,
+    };
     use crate::error::AppResult;
 
     use super::AiService;
@@ -179,6 +192,18 @@ mod tests {
                 provider: self.provider_name().to_string(),
                 summary: format!("echo:{}", request.user_prompt),
                 suggested_patch_notes: vec!["note-a".to_string()],
+            })
+        }
+
+        fn suggest_edit_with_stream(&self, request: &AiEditRequest) -> AppResult<AiStreamResponse> {
+            let response = AiEditResponse {
+                provider: self.provider_name().to_string(),
+                summary: format!("echo:{}", request.user_prompt),
+                suggested_patch_notes: vec!["note-a".to_string()],
+            };
+            Ok(AiStreamResponse {
+                chunks: vec!["echo chunk".to_string()],
+                response,
             })
         }
     }
@@ -199,5 +224,15 @@ mod tests {
         let current = service.active_provider_name().to_string();
         let next = service.cycle_provider();
         assert_ne!(current, next);
+    }
+
+    #[test]
+    fn ai_service_exposes_stream_chunks() {
+        let service = AiService::with_provider(Arc::new(MockProvider));
+        let stream = service
+            .suggest_edit_with_stream("hello", "<plist/>")
+            .expect("stream");
+        assert_eq!(stream.response.provider, "mock");
+        assert_eq!(stream.chunks, vec!["echo chunk".to_string()]);
     }
 }

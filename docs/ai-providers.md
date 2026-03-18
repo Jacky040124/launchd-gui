@@ -7,6 +7,7 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
 - `src/adapter/ai/provider.rs`
   - `AiProvider` trait
   - `AiEditRequest` / `AiEditResponse`
+  - `AiStreamResponse`（stream-ready 响应容器，当前默认将 summary/notes 切分为 chunk）
 
 ## 已接入的 Provider 形态
 
@@ -31,6 +32,7 @@ LaunchPad 目前提供了 AI 适配层基础结构，目标是支持多 provider
   - provider 循环切换按钮
   - AI Analyze 触发按钮
   - 建议文本输出面板
+  - stream preview（当前为非阻塞分段展示，后续可替换为真实 token 流）
 
 ## 配置
 

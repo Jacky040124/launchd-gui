@@ -83,6 +83,7 @@ Adapters are trait-based, so tests can inject mock behavior.
   - recent-log query orchestration for selected jobs
 - `ai_service.rs`
   - AI suggestion orchestration (sidecar-first with local heuristic fallback)
+  - stream-ready response path (`suggest_edit_with_stream`) for incremental UI rendering
 - `quicklaunch_service.rs`
   - prepares and syncs QuickLaunch item set (supports starred-only + max-count + group-by policy)
   - drains external QuickLaunch action queue for main app execution

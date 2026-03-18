@@ -914,13 +914,18 @@ impl AppController {
 
         match self
             .ai_service
-            .suggest_edit(&self.editor_state.ai_prompt, &self.editor_state.xml_preview)
+            .suggest_edit_with_stream(&self.editor_state.ai_prompt, &self.editor_state.xml_preview)
         {
-            Ok(response) => {
+            Ok(stream) => {
+                let response = stream.response;
                 let mut lines = vec![format!(
                     "Provider: {}\nSummary: {}",
                     response.provider, response.summary
                 )];
+                if !stream.chunks.is_empty() {
+                    lines.push("Stream preview:".to_string());
+                    lines.extend(stream.chunks.into_iter().map(|chunk| format!("> {chunk}")));
+                }
                 if !response.suggested_patch_notes.is_empty() {
                     lines.push("Suggestions:".to_string());
                     lines.extend(
