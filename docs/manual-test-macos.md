@@ -37,6 +37,8 @@ Expected:
 2. Click **Start**.
 3. Click **Refresh** and verify status change if applicable.
 4. Repeat for **Stop** and **Kickstart**.
+5. Click **Enable**, then **Disable** and verify status messages update.
+6. Click **Load** and **Unload** and verify status messages update.
 
 Expected:
 - Status message shows command success/failure.
@@ -121,3 +123,180 @@ Expected:
 
 Expected:
 - Previously starred jobs remain starred.
+
+## I. Advanced Attribute Filters
+
+1. Use status filter buttons:
+   - **Running**
+   - **Loaded**
+   - **Disabled**
+   - **Unknown**
+2. Verify list updates according to selected status.
+3. Click tri-state filter toggles repeatedly:
+   - `Disabled:any -> yes -> no -> any`
+   - `RunAtLoad:any -> yes -> no -> any`
+   - `KeepAlive:any -> yes -> no -> any`
+   - `HasError:any -> yes -> no -> any`
+
+Expected:
+- Filters can be combined with search and scope filters.
+- Active filter badge reflects advanced filters.
+
+## J. Plist Editor + New Job
+
+1. Select an existing user agent.
+2. In **Plist Editor (Standard + XML)** update one or more fields:
+   - Label / Program / ProgramArguments / WorkingDirectory
+   - StartInterval
+   - EnvironmentVariables (`KEY=VALUE, KEY2=VALUE2`)
+   - Expert keys (`KEY=VALUE, KEY2=VALUE2`)
+   - RunAtLoad / KeepAlive toggles
+3. Confirm XML preview updates immediately as fields change.
+4. Click **Save** and verify status message indicates success.
+5. Click **Save+Load** and verify load result is shown.
+6. Click **Save+Load+Enable** and verify load/enable results are shown.
+7. Click **New User Job** (or **New Global Job**), adjust fields, then **Save**.
+8. Click **Refresh** and verify the newly created plist appears in list.
+
+Expected:
+- Editor shows validation errors for invalid values (for example malformed env pairs).
+- Existing plist edits can be saved safely.
+- New plist creation succeeds in allowed directories and is visible after refresh.
+- Save+Load / Save+Load+Enable returns explicit post-action status.
+
+## J2. Key Panel (search + add)
+
+1. In editor key panel search box, type `interval` and verify matched keys shrink.
+2. Click a key row (for example **StartInterval**).
+3. Verify corresponding editor template is injected (for example StartInterval populated).
+4. Click an advanced key (for example `ThrottleInterval`) and verify it is added into **Expert keys** field.
+
+Expected:
+- Key panel supports search.
+- Clicking key row injects a reasonable default/template without crashing.
+
+## K. Built-in Log Viewer
+
+1. Select a job with known recent output.
+2. In editor area, click **Refresh Logs**.
+   - Optionally set **Window (min)** / **Stream (sec)** / **Max lines** before refresh.
+   - Toggle **Mode:History / Mode:Live** and retest.
+3. Verify logs appear in the **Logs** panel.
+4. Switch to another job and click **Refresh Logs** again.
+
+Expected:
+- Logs update to the selected job context.
+- Empty results show a friendly message instead of crashing.
+- On unsupported environments, an explicit error is shown in status/log panel.
+- Custom window/max-lines settings are respected.
+- Live mode captures short streaming window based on stream seconds setting.
+
+## L. Command Palette
+
+1. In top command palette input, type `refresh` and click **Run Command**.
+2. Select a controllable job, then run:
+   - `start`
+   - `stop`
+   - `restart`
+   - `enable`
+   - `disable`
+3. Run `new user` and verify editor enters new-job draft mode.
+4. Run `save` after editing fields and verify save/create result.
+5. Run `logs` and verify logs panel refreshes.
+6. Star two controllable jobs, then run `start starred` / `stop starred` / `restart starred` and verify batch execution feedback.
+7. Run `providers`, then `provider anthropic` (or any configured provider) and verify status message reflects provider switching.
+
+Expected:
+- Commands execute the same actions as direct buttons.
+- Unknown command returns a clear hint with supported examples.
+
+## M. AI Patch Preview + Confirm Apply
+
+1. Select一个可编辑任务。
+2. 在 AI prompt 输入：`enable run at load interval 300 and add logs`.
+3. 点击 **AI Analyze**，确认建议输出 + diff 预览出现。
+   - 同时确认响应里出现 `Stream preview` 分段行（OpenAI-compatible provider 下应更明显）。
+   - 若响应包含 `Suggested Actions`，点击 **Run AI Actions** 并验证状态反馈。
+4. 点击 **Apply AI Patch**，然后点击 **Confirm Apply**。
+5. 验证编辑器字段已更新（例如 RunAtLoad、StartInterval、Expert keys 中日志路径）。
+6. 点击 **Save** 才真正写入 plist。
+
+Expected:
+- AI 改动先以 diff 预览展示，不会直接改文件。
+- 只有经过确认后才应用到编辑器，再由 Save 落盘。
+
+## N. QuickLaunch Snapshot Sync
+
+1. Set environment variable before launch:
+   - `LAUNCHPAD_QUICKLAUNCH_ENABLE=true`
+   - optional `LAUNCHPAD_QUICKLAUNCH_GROUP_BY=status`
+2. Start LaunchPad and click **Refresh**.
+3. Verify status message includes QuickLaunch sync result.
+4. Check snapshot file:
+   - `~/.config/launchpad/quicklaunch-items.json`
+
+Expected:
+- When helper is not configured, LaunchPad writes JSON snapshot for external menu helper.
+- Snapshot count respects starred-only and max-items config.
+- Group field in JSON follows selected `LAUNCHPAD_QUICKLAUNCH_GROUP_BY` mode.
+
+## O. QuickLaunch Helper Bridge CLI
+
+1. Build helper:
+   ```bash
+   cargo build --bin quicklaunch_helper
+   ```
+2. Set:
+   ```bash
+   export LAUNCHPAD_QUICKLAUNCH_ENABLE=true
+   export LAUNCHPAD_QUICKLAUNCH_HELPER=/path/to/quicklaunch_helper
+   export LAUNCHPAD_QUICKLAUNCH_ACTION_POLL_MS=1500
+   ```
+3. Run LaunchPad and click **Refresh**.
+4. In another terminal run:
+   ```bash
+   /path/to/quicklaunch_helper --list
+   /path/to/quicklaunch_helper --summary
+   ```
+5. Queue one action and wait for auto-apply window:
+   ```bash
+   /path/to/quicklaunch_helper --enqueue-action start <job-id-from-list>
+   /path/to/quicklaunch_helper --enqueue-group-action user-agent stop
+   /path/to/quicklaunch_helper --enqueue-starred-action disable
+   /path/to/quicklaunch_helper --drain-actions
+   ```
+   > `--drain-actions` should now show queued JSON; wait ~poll interval, then run again and it should return `[]`.
+
+Expected:
+- Bridge helper receives synced JSON payload.
+- `--list` and `--summary` return non-empty output when jobs are available.
+- Queued helper actions are drained and executed by LaunchPad auto-poll pipeline.
+
+## P. Native QuickLaunch Menu Bar (macOS)
+
+1. Ensure helper env is set:
+   ```bash
+   export LAUNCHPAD_QUICKLAUNCH_HELPER=/path/to/quicklaunch_helper
+   ```
+2. Start main app and refresh once so QuickLaunch snapshot exists.
+   - Optional: `export LAUNCHPAD_QUICKLAUNCH_MENUBAR_MAX_ITEMS=5`
+3. In another terminal, run:
+   ```bash
+   cargo run --bin quicklaunch_menubar
+   ```
+4. In menu bar app:
+   - click **Refresh Summary** and verify summary text updates
+   - verify menu status line shows badge like `🟢 R1 L3 D0`
+   - click **Starred > Start/Restart Starred** (or any group action)
+   - click one entry under **Items** and run **Start/Stop/Restart/Enable/Disable**
+5. Wait ~1-3 poll cycles (or click **Refresh** for immediate apply).
+6. (Optional) inspect helper queue:
+   ```bash
+   /path/to/quicklaunch_helper --drain-actions
+   ```
+
+Expected:
+- Menu bar helper can queue batch actions without opening LaunchPad window controls.
+- LaunchPad auto-poll (or manual refresh) drains and executes queued actions via shared service layer.
+- Summary refresh reflects current helper snapshot state and updates running/loaded/disabled badge.
+- Items submenu reflects top-N snapshot items and supports per-item action queueing.

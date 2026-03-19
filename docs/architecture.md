@@ -13,7 +13,13 @@ LaunchPad is split into three layers to keep launchd logic testable and UI light
 - `status.rs`
   - Normalized status enum and parser from `launchctl print` output
 - `action.rs`
-  - Trigger action enum (`start`, `stop`, `kickstart`)
+  - Trigger action enum (`start`, `stop`, `kickstart`, `enable`, `disable`, `load`, `unload`)
+- `filter.rs`
+  - advanced filter model (status + tri-state attribute filters)
+- `plist_document.rs`
+  - standard plist editor document model
+  - editor mode enum and documented key definitions
+  - searchable 36+ key definitions and standard-key classifier
 
 This layer contains no process execution and is suitable for deterministic tests.
 
@@ -23,6 +29,20 @@ This layer contains no process execution and is suitable for deterministic tests
   - scans known launchd directories and returns plist candidates
 - `plist_reader.rs`
   - extracts `Label` from plist files
+  - extracts lightweight metadata (`RunAtLoad`, `KeepAlive`, `Disabled`)
+- `plist_doc.rs`
+  - loads/saves standard plist editor model
+  - serializes XML preview
+  - preserves expert string key entries for advanced launchd options
+- `log_stream.rs`
+  - wraps `log show` for history logs and `log stream` for short live capture (macOS)
+- `ai/`
+  - provider abstraction and provider-specific adapters
+  - includes Claude Agent sidecar bridge and provider stubs
+- `quicklaunch.rs`
+  - QuickLaunch menu-bar provider abstraction
+  - includes no-op provider, helper-bridge provider (`--sync-json` + `--drain-actions` contract),
+    and file snapshot provider (for external menu helper polling)
 - `launchctl.rs`
   - wraps `launchctl` command invocations and error normalization
   - parses `launchctl list` bulk status output
@@ -43,6 +63,7 @@ Adapters are trait-based, so tests can inject mock behavior.
   - on-demand runtime detail fetch per selected job
 - `action_service.rs`
   - validates action capability and executes trigger commands
+  - supports start/stop/kickstart/enable/disable/load/unload
 - `delete_service.rs`
   - safe deletion flow:
     1. capability check
@@ -52,19 +73,69 @@ Adapters are trait-based, so tests can inject mock behavior.
   - loads persisted stars
   - toggles star/unstar and saves state
   - applies star state to job list models
+- `plist_service.rs`
+  - standard editor load/save orchestration
+  - new plist creation in allowed scope directories
+  - XML preview and input parsing helpers (env + expert key/value entries)
+- `diagnostic_service.rs`
+  - static rule analysis for plist validity and safety hints
+- `log_service.rs`
+  - recent-log query orchestration for selected jobs
+- `ai_service.rs`
+  - AI suggestion orchestration (sidecar-first with local heuristic fallback)
+  - stream-ready response path (`suggest_edit_with_stream`) for incremental UI rendering
+  - parses AI action hints into explicit user-triggered action execution path
+- `quicklaunch_service.rs`
+  - prepares and syncs QuickLaunch item set (supports starred-only + max-count + group-by policy)
+  - drains external QuickLaunch action queue for main app execution
 
-## UI Layer (`ui/main.slint` + `src/main.rs`)
+## UI Layer (`ui/main.slint` + `ui/components/*` + `src/main.rs`)
 
 Slint provides a minimal desktop UI:
 
 - virtualized list of jobs (`ListView`)
 - selected job details + expandable advanced diagnostics
 - star/unstar + starred-only filter
+- advanced attribute filters (status/disabled/run-at-load/keep-alive/has-error)
+- embedded plist editor with real-time XML preview
+- real-time diagnostics panel for editor changes
+- new user/global plist creation flow
+- built-in recent log viewer for selected job
+- history/live log mode toggle with configurable stream seconds
+- AI suggestion panel for natural-language launchd guidance
+- command palette for keyboard-first actions
 - copy details action
 - action buttons
 - status message area
 
+`ui/main.slint` now acts as composition root, while reusable sections are split into `ui/components/*`:
+- `top_command_bar.slint`
+- `search_scope_bar.slint`
+- `status_filter_bar.slint`
+- `jobs_workspace.slint`
+- `action_bar.slint`
+- `editor_logs_panel.slint`
+- `editor_ai_panel.slint`
+- `editor_key_panel.slint`
+- `editor_main_panel.slint`
+- `delete_confirm_panel.slint`
+- `status_footer_panel.slint`
+
 `main.rs` wires UI callbacks into service calls and refresh logic.
+
+## Helper Binaries
+
+- `src/bin/quicklaunch_helper.rs`
+  - bridge helper that accepts `--sync-json` payloads
+  - supports `--list` / `--list-json` and `--summary` for external menu integrations
+  - supports `--enqueue-action` / `--enqueue-group-action` / `--enqueue-starred-action`
+    and `--drain-actions` for remote control queue
+- `src/bin/quicklaunch_menubar.rs` (macOS only)
+  - native tray/menu-bar shell for QuickLaunch controls
+  - derives runtime badge (`running/loaded/disabled`) from helper list snapshot
+  - renders top-N per-item action menus from helper snapshot
+  - reads summary via helper bridge and enqueues starred/group actions
+  - actions are applied by LaunchPad auto-poll loop through shared service pipeline
 
 ## Safety Boundaries
 

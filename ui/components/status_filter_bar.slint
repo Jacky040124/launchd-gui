@@ -1,0 +1,63 @@
+import { Button, HorizontalBox } from "std-widgets.slint";
+
+export component StatusFilterBar inherits HorizontalBox {
+    in-out property <bool> busy: false;
+    in-out property <string> status_filter_text: "Status:any";
+    in-out property <string> disabled_filter_text: "Disabled:any";
+    in-out property <string> run_at_load_filter_text: "RunAtLoad:any";
+    in-out property <string> keep_alive_filter_text: "KeepAlive:any";
+    in-out property <string> error_filter_text: "HasError:any";
+    callback status_filter_requested(string);
+    callback cycle_disabled_filter_requested();
+    callback cycle_run_at_load_filter_requested();
+    callback cycle_keep_alive_filter_requested();
+    callback cycle_error_filter_requested();
+
+    spacing: 8px;
+
+    Button {
+        text: root.status_filter_text;
+        enabled: !root.busy;
+        clicked => { root.status_filter_requested("any"); }
+    }
+    Button {
+        text: "Running";
+        enabled: !root.busy;
+        clicked => { root.status_filter_requested("running"); }
+    }
+    Button {
+        text: "Loaded";
+        enabled: !root.busy;
+        clicked => { root.status_filter_requested("loaded"); }
+    }
+    Button {
+        text: "Disabled";
+        enabled: !root.busy;
+        clicked => { root.status_filter_requested("disabled"); }
+    }
+    Button {
+        text: "Unknown";
+        enabled: !root.busy;
+        clicked => { root.status_filter_requested("unknown"); }
+    }
+    Button {
+        text: root.disabled_filter_text;
+        enabled: !root.busy;
+        clicked => { root.cycle_disabled_filter_requested(); }
+    }
+    Button {
+        text: root.run_at_load_filter_text;
+        enabled: !root.busy;
+        clicked => { root.cycle_run_at_load_filter_requested(); }
+    }
+    Button {
+        text: root.keep_alive_filter_text;
+        enabled: !root.busy;
+        clicked => { root.cycle_keep_alive_filter_requested(); }
+    }
+    Button {
+        text: root.error_filter_text;
+        enabled: !root.busy;
+        clicked => { root.cycle_error_filter_requested(); }
+    }
+}

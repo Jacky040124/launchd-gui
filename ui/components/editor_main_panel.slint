@@ -1,0 +1,256 @@
+import { Button, HorizontalBox, LineEdit, VerticalBox } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+import { EditorLogsPanel } from "./editor_logs_panel.slint";
+import { EditorAiPanel } from "./editor_ai_panel.slint";
+import { EditorKeyPanel } from "./editor_key_panel.slint";
+
+export component EditorMainPanel inherits Rectangle {
+    in-out property <bool> busy: false;
+    in-out property <string> editor_target_text: "";
+    in-out property <string> editor_label: "";
+    in-out property <string> editor_program: "";
+    in-out property <string> editor_program_arguments: "";
+    in-out property <string> editor_working_directory: "";
+    in-out property <string> editor_start_interval: "";
+    in-out property <string> editor_env_vars: "";
+    in-out property <string> editor_expert_entries: "";
+    in-out property <bool> editor_run_at_load: false;
+    in-out property <bool> editor_keep_alive: false;
+    in-out property <string> editor_xml_preview: "";
+    in-out property <string> editor_diagnostics_text: "";
+    in-out property <string> log_mode_text: "Mode:History";
+    in-out property <string> log_window_minutes: "10";
+    in-out property <string> log_stream_seconds: "5";
+    in-out property <string> log_max_lines: "120";
+    in-out property <string> log_view_text: "";
+    in-out property <string> ai_prompt: "";
+    in-out property <string> ai_provider_text: "AI Provider: heuristic-local";
+    in-out property <bool> ai_patch_ready: false;
+    in-out property <bool> ai_actions_ready: false;
+    in-out property <string> ai_response: "";
+    in-out property <string> ai_diff_preview: "";
+    in-out property <string> key_panel_query: "";
+    in-out property <string> key_panel_count_text: "";
+    in-out property <[string]> key_panel_lines: [];
+
+    callback new_job_requested(string);
+    callback editor_label_changed(string);
+    callback editor_program_changed(string);
+    callback editor_args_changed(string);
+    callback editor_working_dir_changed(string);
+    callback editor_start_interval_changed(string);
+    callback editor_env_changed(string);
+    callback editor_expert_entries_changed(string);
+    callback toggle_editor_run_at_load();
+    callback toggle_editor_keep_alive();
+    callback save_editor_requested();
+    callback save_editor_and_load_requested();
+    callback save_editor_load_enable_requested();
+    callback toggle_log_mode_requested();
+    callback log_window_minutes_changed(string);
+    callback log_stream_seconds_changed(string);
+    callback log_max_lines_changed(string);
+    callback refresh_logs_requested();
+    callback ai_prompt_changed(string);
+    callback ai_request_requested();
+    callback ai_cycle_provider_requested();
+    callback ai_apply_patch_requested();
+    callback ai_confirm_patch_requested();
+    callback ai_run_actions_requested();
+    callback key_panel_query_changed(string);
+    callback key_panel_add_requested(int);
+
+    border-width: 1px;
+    border-color: RaycastTheme.border;
+    border-radius: 10px;
+    background: RaycastTheme.surface;
+    clip: true;
+
+    VerticalBox {
+        padding: 10px;
+        spacing: 8px;
+
+        HorizontalBox {
+            spacing: 8px;
+            Text {
+                text: "Plist Editor (Standard + XML)";
+                font-weight: 700;
+                color: RaycastTheme.text-primary;
+            }
+            Text {
+                text: root.editor_target_text;
+                color: RaycastTheme.text-secondary;
+            }
+            Button {
+                text: "New User Job";
+                enabled: !root.busy;
+                clicked => { root.new_job_requested("user-agent"); }
+            }
+            Button {
+                text: "New Global Job";
+                enabled: !root.busy;
+                clicked => { root.new_job_requested("global-agent"); }
+            }
+        }
+
+        HorizontalBox {
+            spacing: 8px;
+            LineEdit {
+                width: 220px;
+                enabled: !root.busy;
+                text <=> root.editor_label;
+                placeholder-text: "Label";
+                edited(value) => { root.editor_label_changed(value); }
+            }
+            LineEdit {
+                width: 220px;
+                enabled: !root.busy;
+                text <=> root.editor_program;
+                placeholder-text: "Program path";
+                edited(value) => { root.editor_program_changed(value); }
+            }
+            LineEdit {
+                width: 240px;
+                enabled: !root.busy;
+                text <=> root.editor_program_arguments;
+                placeholder-text: "ProgramArguments (space separated)";
+                edited(value) => { root.editor_args_changed(value); }
+            }
+            LineEdit {
+                width: 200px;
+                enabled: !root.busy;
+                text <=> root.editor_working_directory;
+                placeholder-text: "WorkingDirectory";
+                edited(value) => { root.editor_working_dir_changed(value); }
+            }
+        }
+
+        HorizontalBox {
+            spacing: 8px;
+            LineEdit {
+                width: 220px;
+                enabled: !root.busy;
+                text <=> root.editor_start_interval;
+                placeholder-text: "StartInterval (seconds)";
+                edited(value) => { root.editor_start_interval_changed(value); }
+            }
+            LineEdit {
+                width: 460px;
+                enabled: !root.busy;
+                text <=> root.editor_env_vars;
+                placeholder-text: "EnvironmentVariables: KEY=VALUE, KEY2=VALUE2";
+                edited(value) => { root.editor_env_changed(value); }
+            }
+            Button {
+                text: root.editor_run_at_load ? "RunAtLoad:yes" : "RunAtLoad:no";
+                enabled: !root.busy;
+                clicked => { root.toggle_editor_run_at_load(); }
+            }
+            Button {
+                text: root.editor_keep_alive ? "KeepAlive:yes" : "KeepAlive:no";
+                enabled: !root.busy;
+                clicked => { root.toggle_editor_keep_alive(); }
+            }
+            Button {
+                text: "Save";
+                enabled: !root.busy;
+                clicked => { root.save_editor_requested(); }
+            }
+            Button {
+                text: "Save+Load";
+                enabled: !root.busy;
+                clicked => { root.save_editor_and_load_requested(); }
+            }
+            Button {
+                text: "Save+Load+Enable";
+                enabled: !root.busy;
+                clicked => { root.save_editor_load_enable_requested(); }
+            }
+        }
+
+        HorizontalBox {
+            spacing: 8px;
+            LineEdit {
+                width: 980px;
+                enabled: !root.busy;
+                text <=> root.editor_expert_entries;
+                placeholder-text: "Expert keys: KEY=VALUE, KEY2=VALUE2 (for undocumented or advanced launchd keys)";
+                edited(value) => { root.editor_expert_entries_changed(value); }
+            }
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: RaycastTheme.border;
+            border-radius: 8px;
+            background: RaycastTheme.surface-muted;
+            VerticalBox {
+                padding: 8px;
+                Text {
+                    text: root.editor_xml_preview;
+                    wrap: word-wrap;
+                    color: RaycastTheme.text-secondary;
+                }
+            }
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: RaycastTheme.border-warning;
+            border-radius: 8px;
+            background: RaycastTheme.warning-bg;
+            VerticalBox {
+                padding: 8px;
+                Text {
+                    text: "Diagnostics";
+                    color: RaycastTheme.warning-text;
+                    font-weight: 600;
+                }
+                Text {
+                    text: root.editor_diagnostics_text;
+                    wrap: word-wrap;
+                    color: RaycastTheme.warning-text;
+                }
+            }
+        }
+
+        EditorLogsPanel {
+            busy: root.busy;
+            log_mode_text: root.log_mode_text;
+            log_window_minutes <=> root.log_window_minutes;
+            log_stream_seconds <=> root.log_stream_seconds;
+            log_max_lines <=> root.log_max_lines;
+            log_view_text: root.log_view_text;
+            toggle_log_mode_requested => { root.toggle_log_mode_requested(); }
+            log_window_minutes_changed(value) => { root.log_window_minutes_changed(value); }
+            log_stream_seconds_changed(value) => { root.log_stream_seconds_changed(value); }
+            log_max_lines_changed(value) => { root.log_max_lines_changed(value); }
+            refresh_logs_requested => { root.refresh_logs_requested(); }
+        }
+
+        EditorAiPanel {
+            busy: root.busy;
+            ai_prompt <=> root.ai_prompt;
+            ai_provider_text: root.ai_provider_text;
+            ai_patch_ready: root.ai_patch_ready;
+            ai_actions_ready: root.ai_actions_ready;
+            ai_response: root.ai_response;
+            ai_diff_preview: root.ai_diff_preview;
+            ai_prompt_changed(value) => { root.ai_prompt_changed(value); }
+            ai_request_requested => { root.ai_request_requested(); }
+            ai_cycle_provider_requested => { root.ai_cycle_provider_requested(); }
+            ai_apply_patch_requested => { root.ai_apply_patch_requested(); }
+            ai_confirm_patch_requested => { root.ai_confirm_patch_requested(); }
+            ai_run_actions_requested => { root.ai_run_actions_requested(); }
+        }
+
+        EditorKeyPanel {
+            busy: root.busy;
+            key_panel_query <=> root.key_panel_query;
+            key_panel_count_text: root.key_panel_count_text;
+            key_panel_lines: root.key_panel_lines;
+            key_panel_query_changed(value) => { root.key_panel_query_changed(value); }
+            key_panel_add_requested(index) => { root.key_panel_add_requested(index); }
+        }
+    }
+}

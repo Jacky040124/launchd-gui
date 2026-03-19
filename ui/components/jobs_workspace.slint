@@ -1,0 +1,155 @@
+import { Button, HorizontalBox, ListView, VerticalBox } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+
+export component JobsWorkspace inherits HorizontalBox {
+    in-out property <bool> busy: false;
+    in-out property <[string]> job_lines: [];
+    in-out property <int> selected_job_row: -1;
+    in-out property <string> detail_label: "";
+    in-out property <string> detail_scope: "";
+    in-out property <string> detail_status: "";
+    in-out property <string> detail_path: "";
+    in-out property <string> detail_run_at_load: "";
+    in-out property <string> detail_keep_alive: "";
+    in-out property <string> detail_disabled_key: "";
+    in-out property <string> detail_pid: "";
+    in-out property <string> detail_last_exit: "";
+    in-out property <string> detail_last_run: "";
+    in-out property <string> detail_runtime_hint: "";
+    in-out property <string> detail_error: "";
+    in-out property <bool> is_starred: false;
+    in-out property <bool> advanced_detail_visible: false;
+    callback select_job(int);
+    callback toggle_star_requested();
+    callback copy_detail_requested();
+    callback toggle_advanced_requested();
+
+    spacing: 12px;
+
+    Rectangle {
+        border-width: 1px;
+        border-color: RaycastTheme.border;
+        border-radius: 10px;
+        background: RaycastTheme.surface;
+        horizontal-stretch: 0.9;
+        clip: true;
+
+        VerticalBox {
+            padding: 8px;
+            spacing: 8px;
+
+            Text {
+                text: "Jobs";
+                font-weight: 700;
+                color: RaycastTheme.text-primary;
+            }
+
+            Rectangle {
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: RaycastTheme.border;
+                clip: true;
+                vertical-stretch: 1;
+
+                ListView {
+                    for line[index] in root.job_lines : Rectangle {
+                        height: 40px;
+                        border-radius: 6px;
+                        x: 4px;
+                        width: parent.width - 8px;
+                        background: root.selected_job_row == index ? #e0ebff : RaycastTheme.surface;
+                        animate background { duration: 160ms; easing: ease-in-out; }
+
+                        Text {
+                            text: line;
+                            x: 10px;
+                            y: (parent.height - self.height) / 2;
+                            color: root.selected_job_row == index ? #12326b : RaycastTheme.text-secondary;
+                            font-weight: root.selected_job_row == index ? 600 : 400;
+                        }
+
+                        TouchArea {
+                            clicked => { root.select_job(index); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        border-width: 1px;
+        border-color: RaycastTheme.border;
+        border-radius: 10px;
+        background: RaycastTheme.surface;
+        horizontal-stretch: 1.1;
+
+        VerticalBox {
+            padding: 12px;
+            spacing: 8px;
+            Text {
+                text: "Selected Job";
+                font-weight: 700;
+                color: RaycastTheme.text-primary;
+            }
+
+            Rectangle {
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: RaycastTheme.border;
+                background: RaycastTheme.surface-muted;
+                VerticalBox {
+                    padding: 10px;
+                    spacing: 4px;
+                    Text { text: "Label: " + root.detail_label; color: RaycastTheme.text-primary; }
+                    Text { text: "Scope: " + root.detail_scope; color: RaycastTheme.text-secondary; }
+                    Text { text: "Status: " + root.detail_status; color: RaycastTheme.text-secondary; }
+                    Text { text: "Path: " + root.detail_path; color: RaycastTheme.text-secondary; wrap: word-wrap; }
+                    Text { text: "RunAtLoad: " + root.detail_run_at_load; color: RaycastTheme.text-secondary; }
+                    Text { text: "KeepAlive: " + root.detail_keep_alive; color: RaycastTheme.text-secondary; }
+                    Text { text: "Disabled key: " + root.detail_disabled_key; color: RaycastTheme.text-secondary; }
+                    Text { text: root.detail_error; color: RaycastTheme.danger-text; wrap: word-wrap; }
+                }
+            }
+
+            HorizontalBox {
+                spacing: 8px;
+                Button {
+                    text: root.is_starred ? "Unstar" : "Star";
+                    enabled: !root.busy;
+                    clicked => { root.toggle_star_requested(); }
+                }
+                Button {
+                    text: "Copy Details";
+                    enabled: !root.busy;
+                    clicked => { root.copy_detail_requested(); }
+                }
+                Button {
+                    text: root.advanced_detail_visible ? "Hide Advanced" : "Show Advanced";
+                    enabled: !root.busy;
+                    clicked => { root.toggle_advanced_requested(); }
+                }
+            }
+
+            Rectangle {
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: RaycastTheme.border;
+                background: RaycastTheme.surface;
+                clip: true;
+                height: root.advanced_detail_visible ? 116px : 0px;
+                opacity: root.advanced_detail_visible ? 1 : 0;
+                animate height, opacity { duration: 180ms; easing: ease-in-out; }
+
+                VerticalBox {
+                    padding: 10px;
+                    spacing: 4px;
+                    Text { text: "PID: " + root.detail_pid; color: RaycastTheme.text-secondary; }
+                    Text { text: "Last Exit: " + root.detail_last_exit; color: RaycastTheme.text-secondary; }
+                    Text { text: "Last Run: " + root.detail_last_run; color: RaycastTheme.text-secondary; }
+                    Text { text: root.detail_runtime_hint; color: RaycastTheme.text-secondary; wrap: word-wrap; }
+                }
+            }
+        }
+    }
+}

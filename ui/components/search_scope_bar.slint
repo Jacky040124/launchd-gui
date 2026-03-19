@@ -1,0 +1,60 @@
+import { Button, HorizontalBox, LineEdit } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+
+export component SearchScopeBar inherits HorizontalBox {
+    in-out property <bool> busy: false;
+    in-out property <string> query_text: "";
+    in-out property <bool> show_starred_only: false;
+    in-out property <string> active_filter_text: "all scopes";
+    callback query_changed(string);
+    callback star_filter_toggled(bool);
+    callback clear_filters_requested();
+    callback scope_filter_requested(string);
+
+    spacing: 8px;
+
+    LineEdit {
+        width: 300px;
+        enabled: !root.busy;
+        text <=> root.query_text;
+        placeholder-text: "Search label or path";
+        edited(text) => { root.query_changed(text); }
+        accepted => { root.query_changed(root.query_text); }
+    }
+
+    Button {
+        text: root.show_starred_only ? "★ Starred only" : "☆ Starred only";
+        enabled: !root.busy;
+        clicked => { root.star_filter_toggled(!root.show_starred_only); }
+    }
+
+    Button {
+        text: "All";
+        enabled: !root.busy;
+        clicked => { root.clear_filters_requested(); }
+    }
+
+    Button {
+        text: "User Agents";
+        enabled: !root.busy;
+        clicked => { root.scope_filter_requested("user-agent"); }
+    }
+
+    Button {
+        text: "Global Agents";
+        enabled: !root.busy;
+        clicked => { root.scope_filter_requested("global-agent"); }
+    }
+
+    Button {
+        text: "Daemons";
+        enabled: !root.busy;
+        clicked => { root.scope_filter_requested("system-daemon"); }
+    }
+
+    Text {
+        text: "Filter: " + root.active_filter_text;
+        vertical-alignment: center;
+        color: RaycastTheme.text-secondary;
+    }
+}

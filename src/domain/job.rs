@@ -50,6 +50,13 @@ pub struct JobCapabilities {
     pub delete_reason: Option<String>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JobMetadata {
+    pub run_at_load: Option<bool>,
+    pub keep_alive: Option<bool>,
+    pub disabled: Option<bool>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JobSummary {
     pub id: String,
@@ -58,6 +65,7 @@ pub struct JobSummary {
     pub scope: JobScope,
     pub status: JobStatus,
     pub is_starred: bool,
+    pub metadata: JobMetadata,
     pub capabilities: JobCapabilities,
     pub error: Option<String>,
 }

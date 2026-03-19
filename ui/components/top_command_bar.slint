@@ -1,0 +1,40 @@
+import { Button, HorizontalBox, LineEdit } from "std-widgets.slint";
+import { RaycastTheme } from "../theme/raycast_tokens.slint";
+
+export component TopCommandBar inherits HorizontalBox {
+    in-out property <bool> busy: false;
+    in-out property <string> command_query: "";
+    callback refresh_requested();
+    callback command_query_changed(string);
+    callback command_requested();
+
+    spacing: 10px;
+
+    Button {
+        text: "Refresh";
+        enabled: !root.busy;
+        clicked => { root.refresh_requested(); }
+    }
+
+    LineEdit {
+        width: 380px;
+        enabled: !root.busy;
+        text <=> root.command_query;
+        placeholder-text: "Command palette: refresh / enable / new user / save / logs";
+        edited(value) => { root.command_query_changed(value); }
+        accepted => { root.command_requested(); }
+    }
+
+    Button {
+        text: "Run Command";
+        enabled: !root.busy;
+        clicked => { root.command_requested(); }
+    }
+
+    Text {
+        text: root.busy ? "LaunchPad · refreshing jobs..." : "LaunchPad · launchd control center";
+        vertical-alignment: center;
+        font-size: 15px;
+        color: RaycastTheme.text-primary;
+    }
+}

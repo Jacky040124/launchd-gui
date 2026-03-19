@@ -7,7 +7,7 @@ use crate::adapter::launchctl::{
     LaunchctlClient,
 };
 use crate::adapter::plist_reader::PlistReader;
-use crate::domain::job::{compute_capabilities, JobSummary};
+use crate::domain::job::{compute_capabilities, JobMetadata, JobSummary};
 use crate::domain::job_detail::JobRuntimeDetails;
 use crate::domain::status::JobStatus;
 use crate::error::{AppError, AppResult};
@@ -45,17 +45,27 @@ impl JobService {
 
         for (path, scope) in scanned_files {
             let mut error = None;
-            let label = match self.plist_reader.read_label(&path) {
-                Ok(Some(label)) => label,
-                Ok(None) => fallback_label(&path),
+            let metadata: JobMetadata;
+            let label = match self.plist_reader.read_summary(&path) {
+                Ok(summary) => {
+                    metadata = JobMetadata {
+                        run_at_load: summary.run_at_load,
+                        keep_alive: summary.keep_alive,
+                        disabled: summary.disabled,
+                    };
+                    summary.label.unwrap_or_else(|| fallback_label(&path))
+                }
                 Err(err) => {
                     error = Some(err.to_string());
+                    metadata = JobMetadata::default();
                     fallback_label(&path)
                 }
             };
 
             let status = if error.is_some() {
                 JobStatus::Unknown
+            } else if metadata.disabled == Some(true) {
+                JobStatus::Disabled
             } else if let Some(entry) = list_status_by_label.get(&label) {
                 entry.status()
             } else {
@@ -69,6 +79,7 @@ impl JobService {
                 scope: scope.clone(),
                 status,
                 is_starred: false,
+                metadata,
                 capabilities: compute_capabilities(&scope, &path),
                 error,
             });
