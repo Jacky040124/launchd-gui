@@ -214,8 +214,8 @@ mod macos {
                         }
                     }
                 }
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(error) if error.is_disconnected() => break,
+                Err(_) => {}
             }
         }
 

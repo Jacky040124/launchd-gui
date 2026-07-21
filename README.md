@@ -1,155 +1,124 @@
-# LaunchPad
+<p align="center">
+  <img src="docs/assets/launchpad-social-preview.png" alt="LaunchPad product overview showing launchd jobs, diagnostics, and guarded actions" width="100%">
+</p>
 
-A modern, lightweight, minimalist GUI hub for managing `launchd` jobs on macOS.
+<h1 align="center">LaunchPad</h1>
 
-## Current Scope
+<p align="center"><strong>See, diagnose, and control macOS <code>launchd</code> jobs without memorizing <code>launchctl</code>.</strong></p>
 
-LaunchPad currently includes these core capabilities:
+<p align="center">
+  <a href="https://github.com/Jacky040124/launchd-gui/actions/workflows/ci.yml"><img src="https://github.com/Jacky040124/launchd-gui/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Rust%20%2B%20Slint-native%20GUI-5c6cf2" alt="Rust and Slint native GUI">
+  <img src="https://img.shields.io/badge/status-source%20prototype-f0a83b" alt="Source prototype">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-167653" alt="MIT license"></a>
+</p>
 
-1. **Status read** for jobs under:
-   - `~/Library/LaunchAgents`
-   - `/Library/LaunchAgents`
-   - `/Library/LaunchDaemons` (read-only)
-   - with built-in **search + scope filters** (`All/User Agents/Global Agents/Daemons`)
-2. **Trigger actions**:
-   - `start`
-   - `stop`
-   - `kickstart`
-   - `enable`
-   - `disable`
-   - `load` (`bootstrap`)
-   - `unload` (`bootout`)
-3. **Delete flow** with safety guard:
-   - two-step confirmation
-   - capability checks (scope + file permission)
-4. **Job details + diagnostics**:
-   - fast list status via `launchctl list`
-   - on-demand deep details via `launchctl print`
-   - runtime hints including `pid`, `last exit`, `last run` (best-effort)
-5. **Starred jobs + persistence**:
-   - star/unstar selected jobs
-   - optional starred-only filter
-   - persistent star store in user config
-6. **Copy selected job details**:
-   - multi-line diagnostic format for quick sharing/debugging
-7. **Advanced attribute filters**:
-   - status filter (`running/loaded/disabled/unknown`)
-   - tri-state attribute filters (`Disabled`, `RunAtLoad`, `KeepAlive`, `HasError`)
-8. **Plist editor + creation flow (standard mode)**:
-   - edit common keys: `Label`, `Program`, `ProgramArguments`, `RunAtLoad`, `KeepAlive`,
-     `StartInterval`, `WorkingDirectory`, `EnvironmentVariables`
-   - real-time XML preview while editing
-   - real-time diagnostics with issue descriptions and fix suggestions
-   - create new user/global plist from the app
-   - optional post-save actions: `Save+Load`, `Save+Load+Enable`
-   - expert key entries (`KEY=VALUE`) for advanced/undocumented string keys
-   - searchable key panel (36+ documented launchd keys, click to inject templates)
-9. **Built-in log viewer (selected job)**:
-   - fetch recent logs by selected label (no need to open Console.app)
-   - history mode and short live-capture mode
-10. **AI suggestion panel (native workflow scaffold)**:
-   - natural-language prompt for launchd edits
-   - Claude Agent sidecar integration hook
-   - local heuristic fallback when remote provider unavailable
-   - in-app provider switching (openai/openrouter/lm-studio/ollama/xai/anthropic/google/claude-sidecar)
-   - stream preview chunks in response panel (OpenAI-compatible SSE + stream-ready provider interface)
-   - supports `ACTION:` hints (e.g. `ACTION: load`, `ACTION: enable`) and explicit **Run AI Actions** execution
-   - patch diff preview + explicit confirm before applying edits to editor
-   - provider HTTP calls for OpenAI-compatible, Anthropic, and Google (configurable endpoint/model)
-11. **Command palette (Raycast-style interaction)**:
-   - run commands from a single input (`refresh`, `start`, `stop`, `restart`, `enable`, `new user`, `save`, `save load`, `save load enable`, `logs`, `logs live`, `logs history`)
-   - batch starred controls (`start starred`, `stop starred`, `restart starred`, `enable starred`, etc.)
-   - AI provider commands (`providers`, `provider <name>`)
+<p align="center"><sub>Code-native product overview based on the current Slint interface. Demo data is shown.</sub></p>
 
-## Tech Stack
+## What I engineered
 
-- **Rust**
-- **Slint** (native desktop UI, no web runtime)
-- `plist` crate for plist parsing and XML serialization
-- `launchctl` command adapter for status/actions
-- pluggable AI provider abstraction (sidecar-first)
+1. A native Rust GUI over `launchctl` discovery, status, diagnostics, and job actions.
+2. A layered architecture that separates filesystem and process adapters from domain rules, services, and UI state.
+3. Explicit safety gates for privileged and destructive operations, including read-only system daemons and two-step deletion.
 
-## Project Structure
+**Rust + Slint** · **66 passing tests** · **explicit capability checks before actions**
 
-```text
-src/
-  adapter/         # filesystem + launchctl + plist adapters
-  domain/          # job/status/action models
-  service/         # business orchestration (list/trigger/delete)
-  main.rs          # Slint UI wiring + callbacks
-ui/
-  main.slint       # composition root UI
-  components/      # reusable raycast-style sections
-  theme/           # shared visual tokens
-tests/
-  *_tests.rs       # integration tests with mocks
+## Why LaunchPad exists
+
+macOS background jobs are powerful, but their state is split across plist files, `launchctl` commands, unified logs, permissions, and multiple scopes. The result is a workflow that is easy to inspect incorrectly and risky to edit casually.
+
+LaunchPad brings those surfaces into one reviewable workspace:
+
+| Outcome | Current implementation |
+|---|---|
+| **Find jobs** | Scans user agents, global agents, and system daemons with search, scope, status, and attribute filters |
+| **Diagnose failures** | Combines fast `launchctl list` status with on-demand `launchctl print` details and recent unified logs |
+| **Control safely** | Starts, stops, kickstarts, loads, unloads, enables, and disables only when scope and permissions allow |
+| **Edit with review** | Builds plist XML from a standard editor, runs diagnostics, and requires confirmation before destructive changes |
+
+## Safety is part of the product
+
+LaunchPad does not treat every discovered job as equally mutable.
+
+```mermaid
+flowchart LR
+    A[Discover job] --> B{Scope and permission check}
+    B -->|System daemon| C[Read-only inspection]
+    B -->|Controllable agent| D[Enable safe actions]
+    D --> E{Destructive action?}
+    E -->|No| F[Execute through launchctl adapter]
+    E -->|Yes| G[Review target and confirm]
+    G --> F
 ```
 
-## Development
+The same capability model is used by the UI and service layer, so disabled controls are backed by domain rules rather than presentation alone.
+
+## Current status
+
+LaunchPad is a **source prototype**, not a signed or notarized macOS release yet.
+
+### Implemented in the current source build
+
+1. Job discovery across `~/Library/LaunchAgents`, `/Library/LaunchAgents`, and `/Library/LaunchDaemons`.
+2. Search, scope, status, starred-only, and plist-attribute filters.
+3. Bulk status plus on-demand runtime details.
+4. Guarded trigger actions and two-step deletion.
+5. Persistent starred jobs and copyable diagnostics.
+6. Standard plist creation and editing with XML preview and rule-based diagnostics.
+7. History and short live-capture log views.
+8. A command palette over the same service actions.
+
+### Experimental
+
+1. AI-assisted plist suggestions and provider adapters.
+2. QuickLaunch snapshot, helper, and menu-bar integrations.
+3. Advanced or undocumented plist keys represented as expert entries.
+
+### Not shipped yet
+
+1. A signed, notarized, downloadable app bundle.
+2. Automated end-to-end tests against real macOS `launchctl` state.
+3. A fully general editor for arbitrary nested plist structures.
+
+See the [macOS manual test plan](docs/manual-test-macos.md) for the current main-path checklist.
+
+## Architecture
+
+```text
+Slint UI
+   │
+Application controller
+   │
+Service layer           job · action · delete · plist · logs · AI · QuickLaunch
+   │
+Domain rules            status · capabilities · filters · plist model
+   │
+Adapters                launchctl · filesystem · unified logs · clipboard · providers
+```
+
+Two choices keep the system responsive and testable:
+
+1. Refresh uses one bulk `launchctl list` query; deeper `launchctl print` work happens only for the selected job.
+2. Process execution and filesystem access sit behind traits, allowing service behavior to be tested with mocks.
+
+Read the full [architecture overview](docs/architecture.md).
+
+## Build from source
 
 ### Requirements
 
-- Rust stable (project validated on `rustc 1.94+`)
-- Linux build dependencies for CI/local check:
-  - `pkg-config`
-  - `libfontconfig1-dev`
-- Optional AI environment variables:
-  - `LAUNCHPAD_AI_PROVIDER` (default AI provider)
-  - `LAUNCHPAD_CLAUDE_SIDECAR` (Claude sidecar executable path)
-- Optional QuickLaunch environment variables:
-  - `LAUNCHPAD_QUICKLAUNCH_ENABLE` (`true/false`, default false)
-  - `LAUNCHPAD_QUICKLAUNCH_STARRED_ONLY` (`true/false`, default true)
-  - `LAUNCHPAD_QUICKLAUNCH_MAX_ITEMS` (default 12)
-  - `LAUNCHPAD_QUICKLAUNCH_GROUP_BY` (`scope` / `status` / `starred-scope`, default `scope`)
-  - `LAUNCHPAD_QUICKLAUNCH_ACTION_POLL_MS` (default `2500`, auto-apply queued actions interval)
-  - `LAUNCHPAD_QUICKLAUNCH_HELPER` (optional helper executable receiving `--sync-json`)
-  - when helper is not set and QuickLaunch is enabled, LaunchPad writes sync snapshot to:
-    `~/.config/launchpad/quicklaunch-items.json`
-
-### QuickLaunch Helper CLI
-
-The repository now includes `quicklaunch_helper` binary for bridge mode:
+1. macOS with a GUI session.
+2. Rust stable. The current dependency graph is validated with Rust 1.94 or newer.
 
 ```bash
-cargo run --bin quicklaunch_helper -- --sync-json   # reads JSON from stdin
-cargo run --bin quicklaunch_helper -- --list
-cargo run --bin quicklaunch_helper -- --list-json
-cargo run --bin quicklaunch_helper -- --summary
+git clone https://github.com/Jacky040124/launchd-gui.git
+cd launchd-gui
+cargo run --bin launchpad
 ```
 
-QuickLaunch payload now includes group + starred + last-updated timestamp for real-time menu indicators.
-Helper command queue is also supported for external menu integrations:
+LaunchPad reads the normal user and system launchd locations. Test write actions on a disposable user LaunchAgent first.
 
-```bash
-cargo run --bin quicklaunch_helper -- --enqueue-action start id-1,id-2
-cargo run --bin quicklaunch_helper -- --enqueue-group-action user-agent stop
-cargo run --bin quicklaunch_helper -- --enqueue-group-action global-agent restart
-cargo run --bin quicklaunch_helper -- --enqueue-starred-action disable
-cargo run --bin quicklaunch_helper -- --drain-actions
-```
-
-When QuickLaunch sync is enabled, LaunchPad auto-drains queued actions on a timer and executes them through the same action service used by the main UI (manual refresh can still force immediate apply).
-
-For macOS native menu-bar control, the repository also includes:
-
-```bash
-cargo run --bin quicklaunch_menubar
-```
-
-`quicklaunch_menubar` reads summary from `quicklaunch_helper` and can enqueue starred/group batch actions from the menu bar; LaunchPad applies them through shared action service auto-polling.
-Menu title shows a live status badge (`running/loaded/disabled` counts) based on helper snapshots.
-Menu also exposes per-item controls (Start/Stop/Restart/Enable/Disable) from helper snapshot top items.
-
-Optional menu sizing:
-- `LAUNCHPAD_QUICKLAUNCH_MENUBAR_MAX_ITEMS` (default `8`)
-
-### Run
-
-```bash
-cargo run
-```
-
-### Validate
+## Validate
 
 ```bash
 cargo fmt --all -- --check
@@ -157,41 +126,14 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets
 ```
 
-## Runtime Notes
+The repository includes 66 passing unit and integration tests across domain logic, adapters, job actions, deletion, starring, and QuickLaunch behavior. Real system behavior still requires the [macOS manual test plan](docs/manual-test-macos.md).
 
-- Real launchd behavior can only be fully validated on **macOS**.
-- On Linux, tests validate parsing/flow/control logic through mocks.
-- System daemons are intentionally non-destructive (read-only capabilities).
-- Clipboard copy uses `pbcopy` on macOS builds.
+## Deeper documentation
 
-## Performance Strategy
-
-LaunchPad uses a layered performance approach:
-
-1. **Renderer**:
-   - macOS builds use Slint `renderer-skia` (GPU path)
-   - non-macOS builds keep software renderer for CI/dev portability
-2. **Virtualized list UI**:
-   - job list rendered with Slint `ListView` to avoid creating all row widgets at once
-3. **Cheaper refresh path**:
-   - refresh uses one `launchctl list` call for bulk status
-   - expensive `launchctl print` is deferred to selected-job details only
-
-## Known Limitations
-
-- No full expert editor for arbitrary nested keys yet (standard editor first).
-- AI providers are scaffolded; remote API wiring is still being expanded.
-- QuickLaunch menubar integration is scaffolded but not active yet in this build.
-- `launchctl` output formats can vary across macOS versions; detail parsing is resilient but best-effort.
-
-## Next Roadmap
-
-- Add expert plist editor with arbitrary key injection panel (36+ documented keys).
-- Add richer runtime diagnostics (launchctl print + log evidence cross-linking).
-- Add streaming log mode (pause/resume/follow).
-- Add AI-native workflow for natural-language create/edit with reviewable diffs.
-- Expand macOS-only integration tests for real `launchctl` workflows.
+1. [Architecture](docs/architecture.md)
+2. [AI providers](docs/ai-providers.md)
+3. [macOS manual test plan](docs/manual-test-macos.md)
 
 ## License
 
-MIT
+[MIT](LICENSE)

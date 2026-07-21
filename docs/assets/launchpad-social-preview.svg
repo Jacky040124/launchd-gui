@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">LaunchPad interface overview</title>
+  <desc id="desc">A product overview showing launchd jobs, diagnostics, and guarded actions in a native macOS interface.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7f8fa"/>
+      <stop offset="1" stop-color="#e8edf5"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5c6cf2"/>
+      <stop offset="1" stop-color="#7c4dff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#1f2937" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <circle cx="1170" cy="80" r="190" fill="#dfe4ff" opacity="0.7"/>
+  <circle cx="100" cy="610" r="240" fill="#eef0ff"/>
+
+  <g transform="translate(76 88)">
+    <rect width="52" height="52" rx="15" fill="url(#accent)"/>
+    <path d="M15 17h22M15 26h22M15 35h14" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="37" cy="35" r="5" fill="#8ef0c5"/>
+
+    <text x="0" y="112" fill="#111827" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="60" font-weight="750">LaunchPad</text>
+    <text x="0" y="162" fill="#374151" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="25" font-weight="540">launchd, without the command line anxiety.</text>
+
+    <text x="0" y="224" fill="#6b7280" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="19">Inspect jobs. Diagnose failures. Control safely.</text>
+
+    <g transform="translate(0 270)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="650">
+      <rect width="122" height="38" rx="19" fill="#111827"/>
+      <text x="61" y="25" fill="#fff" text-anchor="middle">Rust + Slint</text>
+      <rect x="132" width="150" height="38" rx="19" fill="#e8ecff" stroke="#cfd6ff"/>
+      <text x="207" y="25" fill="#424fb8" text-anchor="middle">launchctl adapter</text>
+      <rect x="292" width="136" height="38" rx="19" fill="#e5f8ef" stroke="#c1ecd8"/>
+      <text x="360" y="25" fill="#167653" text-anchor="middle">Safety gates</text>
+    </g>
+
+    <g transform="translate(0 352)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
+      <text y="0" fill="#111827" font-size="16" font-weight="700">BUILT BY JACKY ZHONG</text>
+      <text y="34" fill="#6b7280" font-size="16">Native macOS systems tooling with explicit</text>
+      <text y="57" fill="#6b7280" font-size="16">boundaries for privileged and destructive actions.</text>
+    </g>
+  </g>
+
+  <g transform="translate(554 72)" filter="url(#shadow)">
+    <rect width="650" height="500" rx="18" fill="#fbfbfd" stroke="#d5d9e2"/>
+    <path d="M18 0h614a18 18 0 0 1 18 18v34H0V18A18 18 0 0 1 18 0Z" fill="#eff1f5"/>
+    <circle cx="25" cy="26" r="6" fill="#ff5f57"/>
+    <circle cx="45" cy="26" r="6" fill="#febc2e"/>
+    <circle cx="65" cy="26" r="6" fill="#28c840"/>
+    <text x="325" y="32" text-anchor="middle" fill="#596070" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="650">LaunchPad</text>
+
+    <g transform="translate(18 70)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
+      <rect width="614" height="42" rx="10" fill="#f1f3f7"/>
+      <text x="18" y="27" fill="#8a91a0" font-size="14">⌘  Search jobs or run a command…</text>
+      <rect x="520" y="8" width="78" height="26" rx="7" fill="#fff" stroke="#d6dae3"/>
+      <text x="559" y="26" text-anchor="middle" fill="#4b5563" font-size="12" font-weight="650">Refresh</text>
+
+      <g transform="translate(0 58)">
+        <rect width="232" height="276" rx="12" fill="#fff" stroke="#dce0e8"/>
+        <text x="15" y="30" fill="#202635" font-size="14" font-weight="750">Jobs</text>
+        <g font-size="12">
+          <rect x="10" y="45" width="212" height="42" rx="8" fill="#e7ebff"/>
+          <circle cx="26" cy="66" r="5" fill="#28b780"/>
+          <text x="40" y="64" fill="#26336f" font-weight="700">com.acme.sync</text>
+          <text x="40" y="79" fill="#737b8c">running · User Agent</text>
+
+          <circle cx="26" cy="111" r="5" fill="#f0a83b"/>
+          <text x="40" y="109" fill="#303746">com.apple.metadata</text>
+          <text x="40" y="124" fill="#8a91a0">loaded · Global Agent</text>
+
+          <circle cx="26" cy="156" r="5" fill="#a2a8b4"/>
+          <text x="40" y="154" fill="#303746">com.apple.analyticsd</text>
+          <text x="40" y="169" fill="#8a91a0">read only · System Daemon</text>
+
+          <circle cx="26" cy="201" r="5" fill="#6f7ff4"/>
+          <text x="40" y="199" fill="#303746">com.acme.backup</text>
+          <text x="40" y="214" fill="#8a91a0">disabled · User Agent</text>
+        </g>
+      </g>
+
+      <g transform="translate(246 58)">
+        <rect width="368" height="180" rx="12" fill="#fff" stroke="#dce0e8"/>
+        <text x="16" y="30" fill="#202635" font-size="14" font-weight="750">Selected Job</text>
+        <rect x="16" y="45" width="336" height="88" rx="9" fill="#f7f8fb"/>
+        <text x="30" y="68" fill="#202635" font-size="13" font-weight="700">com.acme.sync</text>
+        <text x="30" y="91" fill="#737b8c" font-size="12">PID 4281 · Last exit 0 · RunAtLoad yes</text>
+        <text x="30" y="111" fill="#737b8c" font-size="12">~/Library/LaunchAgents/com.acme.sync.plist</text>
+        <rect x="16" y="145" width="72" height="24" rx="6" fill="#111827"/>
+        <text x="52" y="162" text-anchor="middle" fill="#fff" font-size="11" font-weight="650">Kickstart</text>
+        <rect x="96" y="145" width="62" height="24" rx="6" fill="#fff" stroke="#d6dae3"/>
+        <text x="127" y="162" text-anchor="middle" fill="#4b5563" font-size="11" font-weight="650">Disable</text>
+        <rect x="166" y="145" width="82" height="24" rx="6" fill="#fff" stroke="#d6dae3"/>
+        <text x="207" y="162" text-anchor="middle" fill="#4b5563" font-size="11" font-weight="650">View logs</text>
+      </g>
+
+      <g transform="translate(246 252)">
+        <rect width="368" height="82" rx="12" fill="#fff7e8" stroke="#f0d59a"/>
+        <circle cx="29" cy="30" r="12" fill="#f4b247"/>
+        <text x="29" y="35" text-anchor="middle" fill="#fff" font-size="15" font-weight="800">!</text>
+        <text x="50" y="26" fill="#694f19" font-size="13" font-weight="750">Review before applying</text>
+        <text x="50" y="47" fill="#876d34" font-size="11">Destructive actions require explicit confirmation.</text>
+        <text x="50" y="64" fill="#876d34" font-size="11">System daemons remain read only.</text>
+      </g>
+
+      <g transform="translate(0 352)">
+        <rect width="614" height="52" rx="10" fill="#f1f3f7"/>
+        <circle cx="20" cy="26" r="5" fill="#28b780"/>
+        <text x="34" y="30" fill="#596070" font-size="12">Demo data · diagnostics ready · no privileged action pending</text>
+      </g>
+    </g>
+  </g>
+</svg>
