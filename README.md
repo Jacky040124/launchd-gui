@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/launchpad-social-preview.png" alt="LaunchPad product overview showing launchd jobs, diagnostics, and guarded actions" width="100%">
+  <img src="docs/assets/launchpad-app.png" alt="LaunchPad running its native Slint interface with real macOS user LaunchAgents" width="100%">
 </p>
 
 <h1 align="center">LaunchPad</h1>
@@ -13,7 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-167653" alt="MIT license"></a>
 </p>
 
-<p align="center"><sub>Code-native product overview based on the current Slint interface. Demo data is shown.</sub></p>
+<p align="center"><sub>Rendered from the current Slint interface with real, non-sensitive user LaunchAgents on macOS. The home path is abbreviated.</sub></p>
 
 ## What I engineered
 
